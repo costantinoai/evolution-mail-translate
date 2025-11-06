@@ -6,12 +6,8 @@ set -e
 
 case "$1" in
     remove|upgrade|deconfigure)
-        # Kill Evolution if running to prevent module conflicts
-        if pgrep -x evolution > /dev/null; then
-            echo "Stopping Evolution..."
-            killall evolution 2>/dev/null || true
-            sleep 1
-        fi
+        # No process manipulation here. If Evolution is running during removal or upgrade,
+        # the user may need to restart it to unload/reload modules.
         ;;
 
     failed-upgrade)
@@ -23,6 +19,5 @@ case "$1" in
         ;;
 esac
 
-#DEBHELPER#
 
 exit 0

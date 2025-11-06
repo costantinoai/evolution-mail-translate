@@ -12,8 +12,7 @@ case "$1" in
         echo "Run the following as the target user to set up the environment:"
         echo "  evolution-translate-setup"
         echo
-        echo "After setup, restart Evolution to load the extension:"
-        echo "  killall evolution && evolution &"
+        echo "After setup, restart Evolution to load the extension."
         echo
         ;;
 
@@ -26,6 +25,5 @@ case "$1" in
         ;;
 esac
 
-#DEBHELPER#
 
 exit 0

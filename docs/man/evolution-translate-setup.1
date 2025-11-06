@@ -1,0 +1,53 @@
+.TH evolution-translate-setup 1 "November 2025" "evolution-translate-extension" "User Commands"
+.SH NAME
+evolution-translate-setup \- set up a per-user Python environment for Evolution Translate
+.SH SYNOPSIS
+.B evolution-translate-setup
+[
+.B --models
+|
+.B --no-models
+]
+.SH DESCRIPTION
+.B evolution-translate-setup
+creates a per-user Python virtual environment used by the Evolution Translate extension.
+It installs the required Python packages and can optionally download default Argos Translate models.
+
+By default, the virtual environment is created under
+.I $HOME/.local/lib/evolution-translate/venv
+and is auto-detected by the extension.
+
+This command does not require root and is intended to be run by each user who wants to use the extension.
+.SH OPTIONS
+.TP
+.B --models
+Install a default set of Argos Translate models after creating/updating the virtual environment.
+.TP
+.B --no-models
+Do not install Argos Translate models.
+.SH ENVIRONMENT
+.TP
+.B TRANSLATE_PYTHON_BIN
+Path to a Python interpreter to use for running the translation backend. If unset, the tool and extension
+auto-detect the per-user virtual environment at
+.I $HOME/.local/lib/evolution-translate/venv/bin/python.
+.SH FILES
+.TP
+.I $HOME/.local/lib/evolution-translate/venv
+Default per-user virtual environment location used by the extension.
+.TP
+.I /usr/share/evolution-translate/translate/
+Helper scripts used for model installation and maintenance.
+.SH EXAMPLES
+.TP
+Create the virtual environment and interactively choose whether to install models:
+.br
+.B evolution-translate-setup
+.TP
+Create the virtual environment and install default models non-interactively:
+.br
+.B evolution-translate-setup --models
+.SH SEE ALSO
+.BR evolution (1)
+.SH AUTHOR
+Andrea Costantino <andreaivancostantino@outlook.it>

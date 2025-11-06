@@ -48,12 +48,50 @@ target_include_directories(translate-module PUBLIC
 	${JSON_GLIB_INCLUDE_DIRS}
 )
 
+# Ensure the linker knows where to find Evolution libraries without injecting RPATH
+target_link_directories(translate-module PRIVATE
+    ${EVOLUTION_SHELL_LIBRARY_DIRS}
+    ${EVOLUTION_CALENDAR_LIBRARY_DIRS}
+    ${EVOLUTION_MAIL_LIBRARY_DIRS}
+    ${LIBECAL_LIBRARY_DIRS}
+    ${JSON_GLIB_LIBRARY_DIRS}
+)
+
 target_link_libraries(translate-module
-	${EVOLUTION_SHELL_LDFLAGS}
-	${EVOLUTION_CALENDAR_LDFLAGS}
-	${EVOLUTION_MAIL_LDFLAGS}
-	${LIBECAL_LDFLAGS}
-	${JSON_GLIB_LDFLAGS}
+    ${EVOLUTION_SHELL_LIBRARIES}
+    ${EVOLUTION_CALENDAR_LIBRARIES}
+    ${EVOLUTION_MAIL_LIBRARIES}
+    ${LIBECAL_LIBRARIES}
+    ${JSON_GLIB_LIBRARIES}
+)
+
+# Propagate any non-library link flags but filter out potential RPATH/RUNPATH injectors
+set(_PKG_LDFLAGS_OTHER
+    ${EVOLUTION_SHELL_LDFLAGS_OTHER}
+    ${EVOLUTION_CALENDAR_LDFLAGS_OTHER}
+    ${EVOLUTION_MAIL_LDFLAGS_OTHER}
+    ${LIBECAL_LDFLAGS_OTHER}
+    ${JSON_GLIB_LDFLAGS_OTHER}
+)
+
+if(_PKG_LDFLAGS_OTHER)
+    # Remove any -Wl,-rpath,* and -Wl,-R* occurrences defensively
+    foreach(flag IN LISTS _PKG_LDFLAGS_OTHER)
+        if(flag MATCHES "^-Wl,-rpath,.*" OR flag MATCHES "^-Wl,-R.*")
+            list(REMOVE_ITEM _PKG_LDFLAGS_OTHER ${flag})
+        endif()
+    endforeach()
+    if(_PKG_LDFLAGS_OTHER)
+        target_link_options(translate-module PRIVATE ${_PKG_LDFLAGS_OTHER})
+    endif()
+endif()
+
+# Ensure no RPATH/RUNPATH is embedded to satisfy Debian lintian
+set_target_properties(translate-module PROPERTIES
+    SKIP_RPATH TRUE
+    BUILD_WITH_INSTALL_RPATH FALSE
+    INSTALL_RPATH ""
+    BUILD_RPATH ""
 )
 
 install(TARGETS translate-module
