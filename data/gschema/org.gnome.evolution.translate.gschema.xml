@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.evolution.translate" path="/org/gnome/evolution/translate/">
+    <key name="target-language" type="s">
+      <default>'en'</default>
+      <summary>Target language code</summary>
+      <description>Language code (ISO 639-1) to translate messages into.</description>
+    </key>
+    <key name="provider-id" type="s">
+      <default>'argos'</default>
+      <summary>Active translation provider</summary>
+      <description>Provider identifier to use for translation (e.g., 'argos').</description>
+    </key>
+    <key name="preserve-format" type="b">
+      <default>true</default>
+      <summary>Preserve message formatting</summary>
+      <description>Whether to attempt HTML-structure preserving translation.</description>
+    </key>
+  </schema>
+
+  <!-- Provider-specific (relocatable) schema example for Argos -->
+  <schema id="org.gnome.evolution.translate.provider" path="/org/gnome/evolution/translate/providers/">
+    <key name="venv-path" type="s">
+      <default>''</default>
+      <summary>Python virtualenv path</summary>
+      <description>Path to the Python virtual environment used for Argos Translate. If empty, use repository-local .venv or system.</description>
+    </key>
+    <key name="install-on-demand" type="b">
+      <default>true</default>
+      <summary>Install models on demand</summary>
+      <description>Allow automatic download of missing Argos Translate models when needed.</description>
+    </key>
+  </schema>
+</schemalist>
+
