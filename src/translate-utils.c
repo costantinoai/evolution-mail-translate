@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /**
  * translate-utils.c
  * Common utility functions used across the translate extension

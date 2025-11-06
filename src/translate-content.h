@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Translate content extraction helpers */
 
 #ifndef TRANSLATE_CONTENT_H
@@ -17,4 +18,3 @@ gchar * translate_get_selected_message_body_html_from_shell_view (EShellView *sh
 G_END_DECLS
 
 #endif /* TRANSLATE_CONTENT_H */
-

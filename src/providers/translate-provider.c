@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Translate Provider - Interface and Registry implementation (skeleton) */
 
 #ifdef HAVE_CONFIG_H
@@ -107,4 +108,3 @@ translate_provider_list_ids (void)
     g_list_free (keys);
     return arr; /* NULL-terminated */
 }
-

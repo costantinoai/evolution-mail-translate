@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /**
  * translate-mail-ui.c
  * Adds translation actions to the Message menu in Mail view.
@@ -70,6 +71,12 @@ action_translate_message_cb (GtkAction *action,
     EShellView *shell_view = user_data;
     g_return_if_fail (E_IS_SHELL_VIEW (shell_view));
 
+    /* Toggle behavior: if already translated, restore original */
+    if (translate_dom_is_translated (shell_view)) {
+        translate_dom_restore_original (shell_view);
+        return;
+    }
+
     /* Extract the message body HTML */
     g_autofree gchar *body_html = get_selected_message_body_html (shell_view);
     if (!body_html || !*body_html) {
@@ -113,7 +120,7 @@ static const GtkActionEntry translate_show_original_entries[] = {
     { "translate-show-original-action",
       GTK_STOCK_REFRESH,
       N_("Show _Original"),
-      NULL,
+      "<Control><Shift>O",
       N_("Show the original content"),
       G_CALLBACK (action_show_original_cb) }
 };

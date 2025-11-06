@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
  * Translate Shell View Extension
  * Integrates translation UI into the Evolution Mail view.
@@ -25,4 +26,3 @@ void  translate_shell_view_extension_type_register (GTypeModule *type_module);
 G_END_DECLS
 
 #endif /* TRANSLATE_SHELL_VIEW_EXTENSION_H */
-

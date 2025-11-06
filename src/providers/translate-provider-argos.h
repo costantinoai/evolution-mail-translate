@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Argos Translate Provider (offline) - header */
 
 #ifndef TRANSLATE_PROVIDER_ARGOS_H

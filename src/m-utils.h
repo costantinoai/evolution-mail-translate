@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* m-utils.h
  * Simple UI manager utilities for enabling/disabling actions
  */
