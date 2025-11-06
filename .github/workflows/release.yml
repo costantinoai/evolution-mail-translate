@@ -1,0 +1,52 @@
+name: Release Debian Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
+            evolution-dev evolution-data-server-dev debhelper devscripts lintian xz-utils
+
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -us -uc -b
+
+      - name: Gather artifacts
+        id: gather
+        run: |
+          set -e
+          DEB=$(ls -t ../*.deb | head -n1)
+          echo "deb=$DEB" >> $GITHUB_OUTPUT
+          sha256sum "$DEB" | tee "${DEB}.sha256"
+          echo "sha=${DEB}.sha256" >> $GITHUB_OUTPUT
+          ARCH=$(dpkg --print-architecture)
+          echo "arch=$ARCH" >> $GITHUB_OUTPUT
+          # Version from debian/changelog
+          VER=$(dpkg-parsechangelog -S Version)
+          echo "version=$VER" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: evolution-translate-extension ${{ steps.gather.outputs.version }} (${% raw %} ${{ steps.gather.outputs.arch }} {% endraw %})
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            ${{ steps.gather.outputs.deb }}
+            ${{ steps.gather.outputs.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
