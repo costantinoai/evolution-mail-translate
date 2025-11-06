@@ -98,3 +98,31 @@ translate_utils_get_install_on_demand (void)
     /* Default: enable install-on-demand */
     return TRUE;
 }
+
+/**
+ * translate_utils_get_provider_id:
+ *
+ * Gets the provider ID setting from GSettings.
+ * If no provider is configured or the setting is empty,
+ * returns "google" as the default (free online provider).
+ *
+ * Returns: (transfer full): A newly allocated string containing the provider
+ *          ID. Free with g_free() when done.
+ */
+gchar *
+translate_utils_get_provider_id (void)
+{
+    GSettings *settings = translate_utils_get_settings ();
+    g_autofree gchar *provider_id = NULL;
+
+    if (settings) {
+        provider_id = g_settings_get_string (settings, "provider-id");
+    }
+
+    /* Return configured provider or default to "google" */
+    if (provider_id && *provider_id) {
+        return g_strdup (provider_id);
+    }
+
+    return g_strdup ("google");
+}

@@ -22,6 +22,12 @@ list(APPEND SOURCES
 	providers/translate-provider.c
 	providers/translate-provider-argos.h
 	providers/translate-provider-argos.c
+	providers/translate-provider-google.h
+	providers/translate-provider-google.c
+	providers/translate-provider-mymemory.h
+	providers/translate-provider-mymemory.c
+	providers/translate-provider-libre.h
+	providers/translate-provider-libre.c
 )
 
 add_library(translate-module MODULE ${SOURCES})
