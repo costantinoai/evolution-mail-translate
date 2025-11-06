@@ -192,9 +192,7 @@ tp_argos_translate_async (gpointer              self,
 
     /* Preferred python order:
      * 1) TRANSLATE_PYTHON_BIN (if set)
-     * 2) /usr/lib/evolution-translate/venv/bin/python (packaged venv)
-     * 3) ~/.local/lib/evolution-translate/venv/bin/python (developer venv)
-     * 4) python3 (system)
+     * 2) ~/.local/lib/evolution-translate/venv/bin/python (user venv)
      */
     if (python_env && *python_env) {
         python = python_env;
