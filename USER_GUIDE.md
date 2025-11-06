@@ -52,6 +52,9 @@ wget https://github.com/costantinoai/evolution-mail-translate/releases/download/
 # Install the package (lets APT resolve dependencies)
 sudo apt install ./evolution-translate-extension_1.0.0-1_amd64.deb
 
+# Prepare per-user Python environment and models
+evolution-translate-setup
+
 # Restart Evolution
 killall evolution
 evolution &
@@ -60,11 +63,10 @@ evolution &
 #### What Gets Installed Automatically
 
 ✅ Evolution extension module
-✅ Python virtual environment with ArgosTranslate
-✅ Default translation models (English ↔ Spanish, French, German)
-✅ All dependencies
+✅ Python helper scripts under `/usr/share/evolution-translate/translate/`
+⬜ Per-user Python environment and models (run `evolution-translate-setup`)
 
-**Installation location:** `/usr/lib/evolution-translate/`
+**User environment location:** `~/.local/lib/evolution-translate/venv`
 
 #### Uninstall
 
@@ -117,14 +119,8 @@ cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr ..
 make -j$(nproc)
 sudo make install
 
-# Set up Python venv (as root)
-sudo python3 -m venv /usr/lib/evolution-translate/venv
-sudo /usr/lib/evolution-translate/venv/bin/pip install argostranslate translatehtml langdetect
-sudo chmod -R 755 /usr/lib/evolution-translate/venv
-
-# Install models (as your user)
-/usr/lib/evolution-translate/venv/bin/python \
-  /usr/lib/evolution-translate/translate/install_default_models.py
+# Set up per-user environment and models
+evolution-translate-setup
 
 # Compile schemas
 sudo glib-compile-schemas /usr/share/glib-2.0/schemas
@@ -269,7 +265,7 @@ If translated HTML emails appear broken:
 
 1. Try translating again (sometimes helps with complex HTML)
 2. Use "Show Original" to see the original formatting
-3. Check that BeautifulSoup4 is installed: `pip list | grep beautifulsoup4`
+3. Check that BeautifulSoup4 is installed in your venv: `~/.local/lib/evolution-translate/venv/bin/pip list | grep beautifulsoup4`
 
 ### Email Doesn't Translate
 
