@@ -47,10 +47,28 @@ else
   "$VENV_DIR/bin/python" -m pip install argostranslate beautifulsoup4 langdetect
 fi
 
-echo
-read -p "Install default translation models now? [y/N] " -n 1 -r || true
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+MODELS_CHOICE=""
+for arg in "$@"; do
+  case "$arg" in
+    --models)
+      MODELS_CHOICE="yes" ;;
+    --no-models)
+      MODELS_CHOICE="no" ;;
+  esac
+done
+
+if [ -z "$MODELS_CHOICE" ]; then
+  echo
+  read -p "Install default translation models now? [y/N] " -n 1 -r || true
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    MODELS_CHOICE="yes"
+  else
+    MODELS_CHOICE="no"
+  fi
+fi
+
+if [ "$MODELS_CHOICE" = "yes" ]; then
   # Find the helper script installed under /usr/share
   HELPER="/usr/share/evolution-translate/translate/install_default_models.py"
   if [ ! -f "$HELPER" ]; then

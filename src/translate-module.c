@@ -40,6 +40,9 @@ e_module_load (GTypeModule *type_module)
 	/* Register providers and add Argos to the registry */
 	translate_provider_argos_type_register (type_module);
 	translate_provider_register (TRANSLATE_TYPE_PROVIDER_ARGOS);
+
+	/* Log a message so automated checks can verify the module loaded */
+	g_message ("[translate] Module loaded");
 }
 
 G_MODULE_EXPORT void
