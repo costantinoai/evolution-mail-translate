@@ -50,12 +50,8 @@ case "$1" in
         echo "Installing default translation models..."
         "$VENV_DIR/bin/python" /usr/lib/evolution-translate/translate/install_default_models.py || true
 
-        # Compile GSettings schemas if present
-        # IMPORTANT: Set umask 0022 to ensure schemas are world-readable (644)
-        # Without this, restrictive root umask may create 640 files that users can't read
-        if [ -d /usr/share/glib-2.0/schemas ]; then
-            (umask 0022 && glib-compile-schemas /usr/share/glib-2.0/schemas) 2>/dev/null || true
-        fi
+        # GSettings schemas are compiled by GLib's dpkg triggers.
+        # No manual invocation of glib-compile-schemas is needed here.
 
         echo "Evolution Translation Extension setup completed."
         echo ""

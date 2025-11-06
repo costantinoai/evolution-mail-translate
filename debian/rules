@@ -19,8 +19,7 @@ override_dh_auto_install:
 
 override_dh_install:
 	dh_install
-	# Ensure GSettings schemas directory exists
-	mkdir -p debian/evolution-translate-extension/usr/share/glib-2.0/schemas
+	# GSettings schemas directory will be created automatically when installing files
 
 override_dh_installchangelogs:
 	dh_installchangelogs
