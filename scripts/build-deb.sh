@@ -69,6 +69,11 @@ echo "Cleaning previous builds..."
 cd "$PROJECT_ROOT"
 rm -rf build _build
 rm -f ../*.deb ../*.changes ../*.buildinfo ../*.dsc ../*.tar.* 2>/dev/null || true
+
+# Clean packages directory
+mkdir -p packages
+rm -f packages/*.deb packages/*.changes packages/*.buildinfo 2>/dev/null || true
+
 print_status "Cleaned"
 
 # Build the package
@@ -78,8 +83,16 @@ dpkg-buildpackage -us -uc -b
 
 print_status "Package built successfully"
 
+# Move build artifacts from parent directory to packages/
+echo ""
+echo "Organizing build artifacts..."
+mv ../*.deb packages/ 2>/dev/null || true
+mv ../*.changes packages/ 2>/dev/null || true
+mv ../*.buildinfo packages/ 2>/dev/null || true
+print_status "Build artifacts moved to packages/"
+
 # Find the generated .deb file
-DEB_FILE=$(ls -t ../*.deb 2>/dev/null | head -n1)
+DEB_FILE=$(ls -t packages/*.deb 2>/dev/null | head -n1)
 
 if [ -z "$DEB_FILE" ]; then
     print_error "No .deb file found after build"

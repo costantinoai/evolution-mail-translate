@@ -3,7 +3,7 @@ name: Release Debian Package
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]*.0.0'
 
 jobs:
   build-release:
@@ -40,7 +40,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: evolution-translate-extension ${{ steps.gather.outputs.version }} (${% raw %} ${{ steps.gather.outputs.arch }} {% endraw %})
+          name: evolution-translate-extension ${{ steps.gather.outputs.version }} (${{ steps.gather.outputs.arch }})
           tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
@@ -49,4 +49,3 @@ jobs:
             ${{ steps.gather.outputs.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

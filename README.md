@@ -4,7 +4,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](#)
 [![License](https://img.shields.io/badge/license-LGPL--2.1%2B-green.svg)](#license)
-[![Documentation](https://img.shields.io/badge/docs-complete-brightgreen.svg)](USER_GUIDE.md)
+[![Documentation](https://img.shields.io/badge/docs-complete-brightgreen.svg)](docs/USER_GUIDE.md)
 
 ## Overview
 
@@ -67,7 +67,7 @@ evolution &
 ./scripts/uninstall.sh
 ```
 
-See **[USER_GUIDE.md](USER_GUIDE.md)** for detailed installation instructions and all available methods.
+See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for detailed installation instructions and all available methods.
 
 ### Usage
 
@@ -75,12 +75,13 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for detailed installation instructions an
 2. Toggle back to original with `Ctrl+Shift+T` again
 3. Configure settings in `Edit` → `Preferences` → `Translate Settings`
 
-See **[USER_GUIDE.md](USER_GUIDE.md)** for complete usage documentation.
+See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for complete usage documentation.
 
 ## Documentation
 
-- **[USER_GUIDE.md](USER_GUIDE.md)** - Installation, usage, configuration, and troubleshooting
-- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Architecture, development, testing, and packaging
+- **[USER_GUIDE.md](docs/USER_GUIDE.md)** - Installation, usage, configuration, and troubleshooting
+- **[DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Architecture, development, and contribution guidelines
+- **[CHANGELOG.md](docs/CHANGELOG.md)** - Notable changes
 
 ## Security & Privacy
 
@@ -97,7 +98,7 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for complete usage documentation.
 
 ## Contributing
 
-We welcome contributions! See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for technical details and development guidelines.
+We welcome contributions! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 ## License
 
