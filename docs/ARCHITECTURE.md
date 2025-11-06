@@ -1,13 +1,9 @@
-================================================================================
-EVOLUTION MAIL TRANSLATION EXTENSION - COMPREHENSIVE UNDERSTANDING
-================================================================================
+# Evolution Mail Translation Extension - Comprehensive Architecture
 
-CREATED: 2025-11-06
-SCOPE: Complete analysis of translation implementation, providers, config, flow
+**Created:** 2025-11-06
+**Scope:** Complete analysis of translation implementation, providers, config, flow
 
-================================================================================
-EXECUTIVE SUMMARY
-================================================================================
+## Executive Summary
 
 The Evolution Mail Translation Extension is a GNOME Evolution plugin providing
 offline email translation using ArgosTranslate. The architecture uses a clean
