@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        distro: ["ubuntu-22.04", "ubuntu-24.04"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
+            evolution-dev evolution-data-server-dev debhelper devscripts lintian \
+            python3-venv python3-pip
+
+      - name: Python deps for tests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest bandit
+
+      - name: Run Python unit tests
+        run: pytest -q
+
+      - name: Configure and build (no install)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j
+
+      - name: C static analysis
+        run: |
+          sudo apt-get install -y cppcheck
+          cppcheck --enable=warning,performance,portability --inline-suppr src || true
+
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -us -uc -b
+
+      - name: Lintian
+        run: |
+          lintian ../*.deb || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-packages
+          path: ../*.deb
+
