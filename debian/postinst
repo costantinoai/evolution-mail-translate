@@ -1,0 +1,78 @@
+#!/bin/bash
+# postinst script for evolution-translate-extension
+# Sets up Python virtual environment and installs translation dependencies
+
+set -e
+
+VENV_DIR="/usr/lib/evolution-translate/venv"
+PYTHON_BIN="/usr/bin/python3"
+
+case "$1" in
+    configure)
+        echo "Setting up Evolution Translation Extension..."
+
+        # Create virtual environment
+        if [ ! -x "$VENV_DIR/bin/python" ] || [ ! -f "$VENV_DIR/pyvenv.cfg" ]; then
+            echo "Creating Python virtual environment..."
+            if ! $PYTHON_BIN -m venv "$VENV_DIR"; then
+                echo "ERROR: Failed to create virtual environment at $VENV_DIR" >&2
+                exit 1
+            fi
+        fi
+
+        # Sanity check venv
+        if [ ! -x "$VENV_DIR/bin/python" ]; then
+            echo "ERROR: Virtual environment is missing python interpreter ($VENV_DIR/bin/python)" >&2
+            exit 1
+        fi
+
+        # Ensure pip is available inside the venv
+        "$VENV_DIR/bin/python" -m ensurepip --upgrade >/dev/null 2>&1 || true
+
+        # Install Python dependencies
+        echo "Installing translation dependencies (this may take a few minutes)..."
+        "$VENV_DIR/bin/python" -m pip install --quiet --upgrade pip
+        if ! "$VENV_DIR/bin/python" -m pip install --quiet argostranslate translatehtml langdetect; then
+            if "$VENV_DIR/bin/python" -m pip --help 2>/dev/null | grep -q "break-system-packages"; then
+                echo "Retrying dependency install with --break-system-packages"
+                "$VENV_DIR/bin/python" -m pip install --quiet --break-system-packages argostranslate translatehtml langdetect
+            else
+                echo "ERROR: Failed to install Python dependencies" >&2
+                exit 1
+            fi
+        fi
+
+        # Set proper permissions
+        chmod -R 755 "$VENV_DIR"
+        chmod -R 755 /usr/lib/evolution-translate/translate
+
+        # Install default translation models
+        echo "Installing default translation models..."
+        "$VENV_DIR/bin/python" /usr/lib/evolution-translate/translate/install_default_models.py || true
+
+        # Compile GSettings schemas if present
+        # IMPORTANT: Set umask 0022 to ensure schemas are world-readable (644)
+        # Without this, restrictive root umask may create 640 files that users can't read
+        if [ -d /usr/share/glib-2.0/schemas ]; then
+            (umask 0022 && glib-compile-schemas /usr/share/glib-2.0/schemas) 2>/dev/null || true
+        fi
+
+        echo "Evolution Translation Extension setup completed."
+        echo ""
+        echo "Please restart Evolution to load the extension:"
+        echo "  killall evolution && evolution &"
+        echo ""
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

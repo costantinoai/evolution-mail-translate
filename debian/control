@@ -1,0 +1,41 @@
+Source: evolution-translate-extension
+Section: gnome
+Priority: optional
+Maintainer: Andrea Costantino <andreaivancostantino@outlook.it>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.15),
+               pkg-config,
+               evolution-dev (>= 3.52.0),
+               evolution-data-server-dev (>= 3.52.0),
+               libcamel-1.2-dev,
+               libebook-1.2-dev,
+               libecal-2.0-dev,
+               libedataserver-1.2-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/costantinoai/evolution-mail-translate
+Vcs-Git: https://github.com/costantinoai/evolution-mail-translate.git
+Vcs-Browser: https://github.com/costantinoai/evolution-mail-translate
+
+Package: evolution-translate-extension
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         evolution (>= 3.52.0),
+         python3 (>= 3.8),
+         python3-pip,
+         python3-venv,
+         python3-bs4
+Description: Translation extension for Evolution Mail
+ This extension adds translation capabilities to the GNOME Evolution
+ email client, enabling users to translate email message bodies
+ directly within the application.
+ .
+ Features:
+  - Offline translation using Argos Translate
+  - Toggle between original and translated content
+  - Support for multiple languages
+  - HTML-aware translation that preserves formatting
+  - Privacy-focused: no data sent to external servers
+ .
+ The extension uses Argos Translate for fully local, offline translation.
+ No API keys are required, and all processing happens on your machine.

@@ -1,0 +1,20 @@
+evolution-translate-extension (0.0.1-1) unstable; urgency=medium
+
+  * Initial release
+  * Features:
+    - Offline translation using Argos Translate
+    - Toggle between original and translated email content
+    - Support for multiple languages via installable models
+    - HTML-aware translation preserving email formatting
+    - Privacy-focused: all processing happens locally
+  * Core functionality:
+    - Mail view integration with Message → Translate action
+    - Separate message window support
+    - Settings dialog for target language configuration
+    - Provider-based architecture for future extensibility
+  * Python backend:
+    - Argos Translate integration for offline translation
+    - Automatic language detection
+    - HTML structure preservation
+
+ -- Andrea Costantino <andreaivancostantino@outlook.it>  Tue, 05 Nov 2025 00:00:00 +0000

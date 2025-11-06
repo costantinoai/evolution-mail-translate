@@ -1,0 +1,28 @@
+#!/bin/bash
+# prerm script for evolution-translate-extension
+# Cleanup before package removal
+
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        # Kill Evolution if running to prevent module conflicts
+        if pgrep -x evolution > /dev/null; then
+            echo "Stopping Evolution..."
+            killall evolution 2>/dev/null || true
+            sleep 1
+        fi
+        ;;
+
+    failed-upgrade)
+        ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
