@@ -1,0 +1,79 @@
+# Build directories
+build/
+_build/
+cmake-build-*/
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Compiled object files
+*.o
+*.so
+*.lo
+*.la
+*.a
+*.dylib
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
+# Debian packaging
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/evolution-translate/
+debian/*.log
+debian/*.substvars
+debian/tmp/
+
+# Package files
+*.deb
+*.changes
+*.buildinfo
+*.upload
+*.dsc
+*.tar.xz
+*.tar.gz
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Log files
+*.log
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak
+.*.swp
+
+# GSettings compiled schemas (should be generated)
+gschemas.compiled
+
+# Test output
+test-results/
+coverage/
+
+# Local development tools
+.claude/
+
+# Debug logs
+/tmp/evolution-debug.log
