@@ -1,1 +1,2 @@
-tools/translate/* usr/lib/evolution-translate/translate/
+# Python tools are installed by CMake to lib/evolution-translate/translate/
+# No need to duplicate here

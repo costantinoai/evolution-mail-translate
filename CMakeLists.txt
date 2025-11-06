@@ -78,9 +78,10 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/data)
 endif()
 
 # Install Python translation tools
+# Use fixed lib path since Python scripts are architecture-independent
 install(
   DIRECTORY ${CMAKE_SOURCE_DIR}/tools/translate/
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/evolution-translate/translate
+  DESTINATION lib/evolution-translate/translate
   FILES_MATCHING
   PATTERN "*.py"
   PATTERN "__pycache__" EXCLUDE
