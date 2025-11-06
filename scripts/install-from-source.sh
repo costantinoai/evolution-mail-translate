@@ -112,14 +112,9 @@ echo "Compiling GSettings schemas (requires sudo)..."
 sudo sh -c 'umask 0022 && glib-compile-schemas /usr/share/glib-2.0/schemas' 2>/dev/null || true
 print_status "GSettings schemas compiled"
 
-# Figure out helper script path (multiarch-aware)
-HELPER1="/usr/lib/evolution-translate/translate/install_default_models.py"
-HELPER2="/usr/lib/x86_64-linux-gnu/evolution-translate/translate/install_default_models.py"
-if [ -f "$HELPER1" ]; then
-    HELPER="$HELPER1"
-elif [ -f "$HELPER2" ]; then
-    HELPER="$HELPER2"
-else
+# Python tools are installed to fixed lib path (architecture-independent)
+HELPER="/usr/lib/evolution-translate/translate/install_default_models.py"
+if [ ! -f "$HELPER" ]; then
     HELPER=""
 fi
 
