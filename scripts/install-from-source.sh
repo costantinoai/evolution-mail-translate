@@ -61,6 +61,9 @@ print_status "Build completed"
 echo ""
 echo "Installing extension to /usr (requires sudo)..."
 sudo make install
+
+# Fix permissions on Python tools directory so regular users can read it
+sudo chmod -R 755 /usr/lib/evolution-translate 2>/dev/null || true
 print_status "Extension installed to /usr/lib*/evolution/modules/"
 
 echo ""
