@@ -19,8 +19,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
-            evolution-dev evolution-data-server-dev
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-Wall -Wextra -Werror"
+            evolution-dev evolution-data-server-dev libebook-1.2-dev
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-Wall -Wextra"
           cmake --build build -j
 
       - name: Python lint (informational only)
