@@ -4,21 +4,9 @@
 
 set -e
 
-VENV_DIR="/usr/lib/evolution-translate/venv"
-
 case "$1" in
     purge)
-        # Remove virtual environment on purge
-        if [ -d "$VENV_DIR" ]; then
-            echo "Removing Python virtual environment..."
-            rm -rf "$VENV_DIR"
-        fi
-
-        # Remove parent directory if empty
-        if [ -d "/usr/lib/evolution-translate" ]; then
-            rmdir --ignore-fail-on-non-empty /usr/lib/evolution-translate 2>/dev/null || true
-        fi
-
+        # No additional cleanup needed; user-level environments remain under ~/.local
         # GSettings schemas cache is handled by GLib's dpkg triggers.
         # No manual invocation of glib-compile-schemas is needed here.
         ;;
