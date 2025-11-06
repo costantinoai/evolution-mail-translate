@@ -537,8 +537,8 @@ install(TARGETS example-module DESTINATION ${EVOLUTION_MODULE_DIR})
 2. **Run Evolution with debugging**:
    ```bash
    killall evolution
-   TRANSLATE_HELPER_PATH="/path/to/translate_runner.py" \
-   TRANSLATE_PYTHON_BIN="/path/to/python" \
+   TRANSLATE_HELPER_PATH="/usr/share/evolution-translate/translate/translate_runner.py" \
+   TRANSLATE_PYTHON_BIN="$HOME/.local/lib/evolution-translate/venv/bin/python" \
    evolution 2>&1 | grep translate
    ```
 
@@ -564,7 +564,8 @@ evolution --force-online 2>&1 | grep "Loading module"
 ```bash
 # Test Python script directly
 echo "<html><body>Bonjour</body></html>" | \
-    /path/to/python translate_runner.py --target en --html
+    "$HOME/.local/lib/evolution-translate/venv/bin/python" \
+    /usr/share/evolution-translate/translate/translate_runner.py --target en --html
 ```
 
 ---
@@ -625,7 +626,7 @@ evolution 2>&1 | grep -i translate
 TRANSLATE_DEBUG=1 evolution
 
 # Method 2: Python script directly
-echo "Bonjour le monde" | python3 /usr/lib/evolution-translate/translate/translate_runner.py \
+echo "Bonjour le monde" | python3 /usr/share/evolution-translate/translate/translate_runner.py \
     --target en --text --debug
 
 # Method 3: Check debug log
@@ -648,8 +649,8 @@ for lang in trans.get_installed_languages():
 EOF
 
 # Test translation directly
-echo "Test email" | /usr/lib/evolution-translate/venv/bin/python \
-    /usr/lib/evolution-translate/translate/translate_runner.py --target en --text
+echo "Test email" | "$HOME/.local/lib/evolution-translate/venv/bin/python" \
+    /usr/share/evolution-translate/translate/translate_runner.py --target en --text
 ```
 
 ### Common Issues
@@ -684,10 +685,10 @@ G_MESSAGES_DEBUG=all evolution 2>&1 | grep -i "translate\|module"
 #### Translation Not Working
 ```bash
 # Verify Python environment
-/usr/lib/evolution-translate/venv/bin/python -c "import argostranslate"
+~/.local/lib/evolution-translate/venv/bin/python -c "import argostranslate"
 
 # Check installed models
-/usr/lib/evolution-translate/venv/bin/python -c "
+~/.local/lib/evolution-translate/venv/bin/python -c "
 import argostranslate.package
 print(argostranslate.package.get_installed_packages())
 "
@@ -735,12 +736,11 @@ ls -l ../*.deb
 The `.deb` package installs:
 
 ```
-/usr/lib/x86_64-linux-gnu/evolution/modules/example-module.so
-/usr/lib/evolution-translate/translate/
+/usr/lib/x86_64-linux-gnu/evolution/modules/libtranslate-module.so
+/usr/share/evolution-translate/translate/
   ├── translate_runner.py
   ├── install_default_models.py
   └── setup_models.py
-/usr/lib/evolution-translate/venv/  (created during postinst)
 /usr/share/glib-2.0/schemas/org.gnome.evolution.translate.gschema.xml
 ```
 
