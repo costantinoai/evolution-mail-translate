@@ -105,5 +105,11 @@ tests/
 
 # Local development extras (keep untracked)
 requirements-dev.txt
-scripts/run-tests.sh
-scripts/README_TESTING.md
+
+# Internal audit and planning documents (keep private)
+PRODUCTION_READINESS_AUDIT.md
+RELEASE_ACTION_PLAN.md
+TESTING_IMPLEMENTATION_PLAN.md
+TEST_SCRIPT_AUDIT.md
+TEST_SCRIPT_CHANGES.md
+WORKFLOW_IMPROVEMENTS.md
