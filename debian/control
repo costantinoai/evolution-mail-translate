@@ -7,10 +7,10 @@ Build-Depends: debhelper-compat (= 13),
                pkg-config,
                evolution-dev (>= 3.52.0),
                evolution-data-server-dev (>= 3.52.0),
-               libcamel-1.2-dev,
-               libebook-1.2-dev,
-               libecal-2.0-dev,
-               libedataserver-1.2-dev
+               libcamel1.2-dev,
+               libebook1.2-dev,
+               libecal2.0-dev,
+               libedataserver1.2-dev
 Standards-Version: 4.6.0
 Homepage: https://github.com/costantinoai/evolution-mail-translate
 Vcs-Git: https://github.com/costantinoai/evolution-mail-translate.git
