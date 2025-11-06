@@ -77,17 +77,23 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/data)
   add_subdirectory(data)
 endif()
 
-# Install Python translation tools
-# Use fixed lib path since Python scripts are architecture-independent
+# Install Python translation tools (arch-independent) under share
 install(
   DIRECTORY ${CMAKE_SOURCE_DIR}/tools/translate/
-  DESTINATION lib/evolution-translate/translate
+  DESTINATION share/evolution-translate/translate
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   FILES_MATCHING
   PATTERN "*.py"
   PATTERN "__pycache__" EXCLUDE
   PATTERN "*.pyc" EXCLUDE
+)
+
+# Install setup helper into /usr/bin
+install(
+  PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/evolution-translate-setup.sh
+  DESTINATION bin
+  RENAME evolution-translate-setup
 )
 
 # CPack configuration for Debian package generation
