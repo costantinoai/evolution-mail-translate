@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
-            evolution-dev evolution-data-server-dev
+            evolution-dev evolution-data-server-dev libebook1.2-dev
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-Wall -Wextra"
           cmake --build build -j
 
@@ -41,7 +41,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
-            evolution-dev evolution-data-server-dev debhelper devscripts lintian cppcheck
+            evolution-dev evolution-data-server-dev libebook1.2-dev \
+            debhelper devscripts lintian cppcheck
 
       - name: Setup Python for testing
         run: |
