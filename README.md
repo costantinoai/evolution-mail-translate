@@ -57,8 +57,8 @@ evolution &
 **Notes:**
 - Evolution only loads modules from `/usr/lib*/evolution/modules/`, so installation requires sudo
 - The module is installed to `/usr/lib*/evolution/modules/libtranslate-module.so`
-- Python tools and venv are installed to `/usr/lib/evolution-translate/`
-- Translation models are stored per-user in `~/.local/share/argos-translate/packages/`
+- Python helper scripts are installed to `/usr/share/evolution-translate/translate/`
+- Python environment and models are per-user: run `evolution-translate-setup` to create a venv under `~/.local/lib/evolution-translate/venv` and install models under `~/.local/share/argos-translate/packages/`
 
 **Uninstall (from source):**
 
