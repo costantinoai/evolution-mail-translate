@@ -39,8 +39,18 @@ evolution &
 ## Usage
 
 - Translate current message: `Ctrl+Shift+T` or Tools → Translate Message
-- Toggle to original: `Ctrl+Shift+T` again
+- Toggle to original: `Ctrl+Shift+T` again (or `Ctrl+Shift+O` for “Show Original”)
 - Settings: Edit → Preferences → Translate Settings
+
+### Settings Explained
+
+- Target language: default output language for translations
+- Install models on demand: automatically download missing Argos Translate models the first time they are needed
+- Python setup: run `evolution-translate-setup` once per user to create a virtualenv and install Python dependencies and (optionally) default models
+
+Advanced (optional):
+- `TRANSLATE_HELPER_PATH` can point to a local translate_runner.py for development
+- `TRANSLATE_PYTHON_BIN` can point to a custom Python interpreter (e.g., inside your venv)
 
 ## Notes
 
@@ -48,4 +58,3 @@ evolution &
 - Helper scripts: `/usr/share/evolution-translate/translate/`
 - Per‑user Python env: `~/.local/lib/evolution-translate/venv`
 - Models: `~/.local/share/argos-translate/packages/`
-
