@@ -10,7 +10,7 @@ BUILD_DIR="$PROJECT_ROOT/build"
 
 # System locations
 INSTALL_PREFIX="/usr"
-SYSTEM_TRANSLATE_ROOT="/usr/lib/evolution-translate"
+SYSTEM_TRANSLATE_SHARE="/usr/share/evolution-translate"
 
 # Color output
 RED='\033[0;31m'
@@ -65,16 +65,15 @@ if [ -f "$SCHEMA_FILE" ]; then
     print_status "Schemas recompiled"
 fi
 
-# Ask about removing system venv and tools
 echo ""
-if [ -d "$SYSTEM_TRANSLATE_ROOT" ]; then
-    read -p "Remove system Python environment and tools ($SYSTEM_TRANSLATE_ROOT)? [y/N] " -n 1 -r
+if [ -d "$SYSTEM_TRANSLATE_SHARE" ]; then
+    read -p "Remove shared translation tools ($SYSTEM_TRANSLATE_SHARE)? [y/N] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        sudo rm -rf "$SYSTEM_TRANSLATE_ROOT"
-        print_status "Removed $SYSTEM_TRANSLATE_ROOT"
+        sudo rm -rf "$SYSTEM_TRANSLATE_SHARE"
+        print_status "Removed $SYSTEM_TRANSLATE_SHARE"
     else
-        print_warning "Kept $SYSTEM_TRANSLATE_ROOT (translation models remain)"
+        print_warning "Kept $SYSTEM_TRANSLATE_SHARE"
     fi
 fi
 

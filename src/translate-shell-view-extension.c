@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Translate Shell View Extension
  * Wires Translate UI into Mail view (preview pane). */
 
@@ -61,4 +62,3 @@ translate_shell_view_extension_type_register (GTypeModule *type_module)
 {
     translate_shell_view_extension_register_type (type_module);
 }
-

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /**
  * translate-browser-extension.c
  * Adds translation actions to EMailBrowser windows.
@@ -58,6 +59,12 @@ action_translate_message_cb (GtkAction *action,
 {
     TranslateBrowserExtension *self = user_data;
     EMailReader *reader = E_MAIL_READER (e_extension_get_extensible (E_EXTENSION (self)));
+
+    /* Toggle behavior: if already translated, restore original */
+    if (translate_dom_is_translated_reader (reader)) {
+        translate_dom_restore_original_reader (reader);
+        return;
+    }
 
     /* Extract the message body HTML */
     g_autofree gchar *body_html = translate_get_selected_message_body_html_from_reader (reader);

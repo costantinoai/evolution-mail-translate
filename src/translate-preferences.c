@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Translate Preferences dialog implementation */
 
 #ifdef HAVE_CONFIG_H
@@ -94,4 +95,3 @@ translate_preferences_show (GtkWindow *parent)
     }
     gtk_widget_destroy (dlg);
 }
-

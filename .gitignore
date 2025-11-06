@@ -48,6 +48,9 @@ debian/tmp/
 *.tar.xz
 *.tar.gz
 
+# Local packages directory (organized build outputs)
+packages/
+
 # IDE and editor files
 .vscode/
 .idea/
@@ -71,9 +74,43 @@ gschemas.compiled
 # Test output
 test-results/
 coverage/
+htmlcov/
+.coverage
+.pytest_cache/
+*.pyc
+
+# Docker
+.dockerignore
+
+# VM images (local testing only)
+*.qcow2
+*.iso
+*.img
+multipass/
+.vagrant/
 
 # Local development tools
 .claude/
 
 # Debug logs
 /tmp/evolution-debug.log
+
+# Local testing artifacts and build outputs
+obj-*/
+obj-x86_64-linux-gnu/
+debian/evolution-translate-extension/
+
+# Local tests folder (kept in repo path but untracked)
+tests/
+
+# Local development extras (keep untracked)
+requirements-dev.txt
+
+# Internal audit and planning documents (keep private)
+PRODUCTION_READINESS_AUDIT.md
+RELEASE_ACTION_PLAN.md
+TESTING_IMPLEMENTATION_PLAN.md
+TEST_SCRIPT_AUDIT.md
+TEST_SCRIPT_CHANGES.md
+WORKFLOW_IMPROVEMENTS.md
+scripts/prepare-release.sh

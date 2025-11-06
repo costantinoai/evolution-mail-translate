@@ -189,6 +189,17 @@ def translate_offline(text: str, target: str, is_html: bool, install_on_demand: 
     debug_log(f"Input preview: {text[:200] if len(text) > 200 else text}")
     debug_log(f"Target: {target}, HTML: {is_html}, Install-on-demand: {install_on_demand}")
 
+    fake_mode = os.environ.get("TRANSLATE_FAKE_UPPERCASE") == "1"
+
+    if fake_mode:
+        class _FakeTranslator:
+            def translate(self, s: str) -> str:
+                return s.upper()
+        translator = _FakeTranslator()
+        if is_html:
+            return translate_html_carefully(translator, text)
+        return translator.translate(text)
+
     try:
         import argostranslate.package as argospkg
         import argostranslate.translate as argostrans
@@ -200,21 +211,22 @@ def translate_offline(text: str, target: str, is_html: bool, install_on_demand: 
 
     # Language detection (optional)
     detected = None
-    try:
-        from langdetect import detect
-        # For HTML, try to extract text content for better detection
-        text_for_detection = text
-        if is_html:
-            try:
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(text, 'html.parser')
-                text_for_detection = soup.get_text()
-            except (ImportError, ValueError):
-                pass  # Fall back to full HTML
-        detected = detect(text_for_detection)
-        debug_log(f"Detected language: {detected}")
-    except (ImportError, ValueError, RuntimeError) as e:
-        debug_log(f"Language detection failed: {e}")
+    if not fake_mode:
+        try:
+            from langdetect import detect
+            # For HTML, try to extract text content for better detection
+            text_for_detection = text
+            if is_html:
+                try:
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(text, 'html.parser')
+                    text_for_detection = soup.get_text()
+                except (ImportError, ValueError):
+                    pass  # Fall back to full HTML
+            detected = detect(text_for_detection)
+            debug_log(f"Detected language: {detected}")
+        except (ImportError, ValueError, RuntimeError) as e:
+            debug_log(f"Language detection failed: {e}")
 
     from_code = detected or "auto"
 

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # Quick validation stage - fails fast before expensive builds
+  quick-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install flake8 black
+
+      - name: Python lint (black)
+        run: python3 -m black --check tools/translate
+
+      - name: Python lint (flake8)
+        run: python3 -m flake8 tools/translate
+
+      - name: Bash syntax check
+        run: bash -n scripts/*.sh
+
+      - name: Basic compilation check
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
+            evolution-dev evolution-data-server-dev
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-Wall -Wextra -Werror"
+          cmake --build build -j
+
+  # Full build and validation - only runs if quick-check passes
+  build-and-test:
+    needs: quick-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
+            evolution-dev evolution-data-server-dev debhelper devscripts lintian cppcheck
+
+      - name: Setup Python for testing
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pytest
+          if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
+
+      - name: Configure and build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_C_FLAGS="-Wall -Wextra"
+          cmake --build build -j
+
+      - name: C static analysis (cppcheck)
+        run: |
+          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 \
+            --inline-suppr --force --quiet src
+
+      - name: Python unit tests
+        run: python3 -m pytest -v
+
+      - name: Build Debian package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Lintian package validation
+        run: lintian --display-info --fail-on error ../*.deb

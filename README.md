@@ -4,7 +4,7 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](#)
 [![License](https://img.shields.io/badge/license-LGPL--2.1%2B-green.svg)](#license)
-[![Documentation](https://img.shields.io/badge/docs-complete-brightgreen.svg)](USER_GUIDE.md)
+[![Documentation](https://img.shields.io/badge/docs-complete-brightgreen.svg)](docs/USER_GUIDE.md)
 
 ## Overview
 
@@ -57,8 +57,8 @@ evolution &
 **Notes:**
 - Evolution only loads modules from `/usr/lib*/evolution/modules/`, so installation requires sudo
 - The module is installed to `/usr/lib*/evolution/modules/libtranslate-module.so`
-- Python tools and venv are installed to `/usr/lib/evolution-translate/`
-- Translation models are stored per-user in `~/.local/share/argos-translate/packages/`
+- Python helper scripts are installed to `/usr/share/evolution-translate/translate/`
+- Python environment and models are per-user: run `evolution-translate-setup` to create a venv under `~/.local/lib/evolution-translate/venv` and install models under `~/.local/share/argos-translate/packages/`
 
 **Uninstall (from source):**
 
@@ -67,20 +67,44 @@ evolution &
 ./scripts/uninstall.sh
 ```
 
-See **[USER_GUIDE.md](USER_GUIDE.md)** for detailed installation instructions and all available methods.
+See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for detailed installation instructions and all available methods.
 
 ### Usage
 
 1. Select an email and press `Ctrl+Shift+T` (or `Tools` → `Translate Message`)
 2. Toggle back to original with `Ctrl+Shift+T` again
+   - Alternatively, use `Ctrl+Shift+O` for “Show Original”
 3. Configure settings in `Edit` → `Preferences` → `Translate Settings`
 
-See **[USER_GUIDE.md](USER_GUIDE.md)** for complete usage documentation.
+See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for complete usage documentation.
 
 ## Documentation
 
-- **[USER_GUIDE.md](USER_GUIDE.md)** - Installation, usage, configuration, and troubleshooting
-- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Architecture, development, testing, and packaging
+- **[USER_GUIDE.md](docs/USER_GUIDE.md)** - Installation, usage, configuration, and troubleshooting
+- **[DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Architecture, development, and contribution guidelines
+- **[CHANGELOG.md](docs/CHANGELOG.md)** - Notable changes
+
+## Settings
+
+Open “Translate Settings” via Edit → Preferences → Translate Settings.
+
+- Target language: Choose your default translation target
+- Install models on demand: If enabled, missing Argos models are downloaded automatically the first time a pair is needed
+- Python venv: Create and manage your per-user venv with `evolution-translate-setup` (installs Python deps and optionally models)
+
+Tip: You can also set environment variables for development overrides:
+- `TRANSLATE_HELPER_PATH` to point to a local translate_runner.py
+- `TRANSLATE_PYTHON_BIN` to point to a specific Python interpreter
+
+## Docker Testing (developers)
+
+Local, test-only Docker builds live under `tests/docker/` (gitignored):
+- Self-contained (no bind mounts): `tests/docker/run-all-images.sh` (Ubuntu 24.04)
+- Base images (bind mounts required): `tests/docker/build-and-test.sh` (Ubuntu 22.04/24.04)
+
+Can Docker-built packages be used for releases? Yes — it’s common to build release artifacts in containers as long as you build on the target distro base (e.g., Ubuntu 24.04) with a clean, reproducible environment. We publish release artifacts built on Ubuntu 24.04 in CI and sign them. Docker images under `tests/docker/` are test-only and not used by CI.
+
+Supported targets: Ubuntu 24.04 (official), Ubuntu 22.04 (best‑effort). The code currently requires Evolution ≥ 3.52 for builds; 22.04 builds may not satisfy this and are treated as informational until compatibility is confirmed.
 
 ## Security & Privacy
 
@@ -97,7 +121,7 @@ See **[USER_GUIDE.md](USER_GUIDE.md)** for complete usage documentation.
 
 ## Contributing
 
-We welcome contributions! See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for technical details and development guidelines.
+We welcome contributions! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 ## License
 

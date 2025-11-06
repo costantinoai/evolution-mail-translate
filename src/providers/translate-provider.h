@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Translate Provider - GInterface and Registry */
 
 #ifndef TRANSLATE_PROVIDER_H

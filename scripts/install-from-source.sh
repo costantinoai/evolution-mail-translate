@@ -10,8 +10,7 @@ BUILD_DIR="$PROJECT_ROOT/build"
 
 # System locations (Evolution only loads modules from /usr/lib*/evolution/modules/)
 INSTALL_PREFIX="/usr"
-SYSTEM_TRANSLATE_ROOT="/usr/lib/evolution-translate"
-VENV_DIR="$SYSTEM_TRANSLATE_ROOT/venv"
+SYSTEM_TRANSLATE_SHARE="/usr/share/evolution-translate"
 
 # Color output
 RED='\033[0;31m'
@@ -63,50 +62,8 @@ echo "Installing extension to /usr (requires sudo)..."
 sudo make install
 
 # Fix permissions on Python tools directory so regular users can read it
-sudo chmod -R 755 /usr/lib/evolution-translate 2>/dev/null || true
+sudo chmod -R 755 "$SYSTEM_TRANSLATE_SHARE" 2>/dev/null || true
 print_status "Extension installed to /usr/lib*/evolution/modules/"
-
-echo ""
-echo "Setting up system Python virtual environment (requires sudo)..."
-sudo mkdir -p "$SYSTEM_TRANSLATE_ROOT"
-
-# Create venv if missing or invalid
-if [ ! -x "$VENV_DIR/bin/python" ] || [ ! -f "$VENV_DIR/pyvenv.cfg" ]; then
-    if ! sudo /usr/bin/python3 -m venv "$VENV_DIR"; then
-        print_error "Failed to create venv at $VENV_DIR"
-        exit 1
-    fi
-    print_status "Virtual environment created at $VENV_DIR"
-else
-    print_warning "Virtual environment already exists at $VENV_DIR"
-fi
-
-# Bootstrap pip and install dependencies
-echo "Bootstrapping pip in virtual environment..."
-sudo "$VENV_DIR/bin/python" -m ensurepip --upgrade >/dev/null 2>&1 || true
-echo "Upgrading pip..."
-sudo "$VENV_DIR/bin/python" -m pip install --upgrade pip --quiet
-
-echo ""
-echo "Installing Python dependencies (this may take a few minutes)..."
-echo "  - argostranslate (will download package indices)"
-echo "  - translatehtml"
-echo "  - langdetect"
-echo ""
-
-if ! sudo "$VENV_DIR/bin/python" -m pip install argostranslate translatehtml langdetect; then
-    if "$VENV_DIR/bin/python" -m pip --help 2>/dev/null | grep -q "break-system-packages"; then
-        print_warning "Retrying dependency install with --break-system-packages"
-        sudo "$VENV_DIR/bin/python" -m pip install --break-system-packages argostranslate translatehtml langdetect
-    else
-        print_error "Failed to install Python dependencies"
-        exit 1
-    fi
-fi
-
-echo ""
-sudo chmod -R 755 "$VENV_DIR"
-print_status "Python dependencies installed into $VENV_DIR"
 
 echo ""
 echo "Compiling GSettings schemas (requires sudo)..."
@@ -114,21 +71,6 @@ echo "Compiling GSettings schemas (requires sudo)..."
 # Without this, restrictive root umask may create 640 files that users can't read
 sudo sh -c 'umask 0022 && glib-compile-schemas /usr/share/glib-2.0/schemas' 2>/dev/null || true
 print_status "GSettings schemas compiled"
-
-# Python tools are installed to fixed lib path (architecture-independent)
-HELPER="/usr/lib/evolution-translate/translate/install_default_models.py"
-if [ ! -f "$HELPER" ]; then
-    HELPER=""
-fi
-
-echo ""
-if [ -n "$HELPER" ]; then
-    echo "Installing default translation models as current user..."
-    "$VENV_DIR/bin/python" "$HELPER" || true
-    print_status "Model installation step finished"
-else
-    print_warning "Could not locate install_default_models.py; skipping model install"
-fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -148,11 +90,11 @@ echo ""
 echo "  4. Configure settings:"
 echo "     - Go to Edit → Preferences → Translate Settings"
 echo ""
+echo "Set up Python dependencies and models (per user):"
+echo "  evolution-translate-setup"
+echo ""
 echo "Environment variables for testing (optional):"
 echo "  export TRANSLATE_HELPER_PATH=\"$PROJECT_ROOT/tools/translate/translate_runner.py\""
-echo "  export TRANSLATE_PYTHON_BIN=\"$VENV_DIR/bin/python\""
-echo ""
-echo "To manage translation models:"
-echo "  $VENV_DIR/bin/python $( [ -n \"$HELPER\" ] && echo \"$HELPER\" || echo \"/usr/lib/evolution-translate/translate/install_default_models.py\" )"
+echo "  export TRANSLATE_PYTHON_BIN=\"$HOME/.local/lib/evolution-translate/venv/bin/python\""
 echo ""
 echo "To uninstall, run: $SCRIPT_DIR/uninstall.sh"

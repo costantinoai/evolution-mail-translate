@@ -1,4 +1,5 @@
-/* Translate DOM helpers - placeholder to apply translated HTML into the preview */
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* Translate DOM helpers - apply translated HTML to preview and manage state */
 
 #ifndef TRANSLATE_DOM_H
 #define TRANSLATE_DOM_H

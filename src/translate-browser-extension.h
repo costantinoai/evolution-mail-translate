@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Translate Browser Extension - integrates Translate into EMailBrowser windows */
 
 #ifndef TRANSLATE_BROWSER_EXTENSION_H
@@ -22,4 +23,3 @@ void  translate_browser_extension_type_register (GTypeModule *type_module);
 G_END_DECLS
 
 #endif /* TRANSLATE_BROWSER_EXTENSION_H */
-

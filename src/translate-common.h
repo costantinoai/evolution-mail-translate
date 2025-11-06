@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /**
  * translate-common.h
  * Common translation logic shared across UI components
