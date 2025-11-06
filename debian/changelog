@@ -1,4 +1,4 @@
-evolution-translate-extension (0.0.1-1) unstable; urgency=medium
+evolution-translate-extension (1.0.0-1) unstable; urgency=medium
 
   * Initial release
   * Features:
@@ -17,4 +17,4 @@ evolution-translate-extension (0.0.1-1) unstable; urgency=medium
     - Automatic language detection
     - HTML structure preservation
 
- -- Andrea Costantino <andreaivancostantino@outlook.it>  Tue, 05 Nov 2025 00:00:00 +0000
+ -- Andrea Costantino <andreaivancostantino@outlook.it>  Thu, 06 Nov 2025 00:00:00 +0000
