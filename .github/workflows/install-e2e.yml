@@ -1,0 +1,54 @@
+name: Install & E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ prod-readiness ]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
+            evolution evolution-dev evolution-data-server-dev debhelper devscripts lintian \
+            xvfb python3-venv python3-pip
+
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -us -uc -b
+
+      - name: Install package
+        run: |
+          sudo apt-get install -y --fix-broken ../*.deb
+
+      - name: Post-install user setup (no models)
+        run: |
+          evolution-translate-setup --no-models
+
+      - name: Verify module loads in Evolution (headless)
+        env:
+          G_MESSAGES_DEBUG: all
+        run: |
+          set -e
+          xvfb-run -a evolution --force-online --quit 2>&1 | tee evo.log || true
+          (grep -i "\[translate\] Module loaded" evo.log && echo OK) || (echo "Module not loaded" && exit 1)
+
+      - name: Verify HTML translation path via helper (fake mode)
+        env:
+          TRANSLATE_FAKE_UPPERCASE: "1"
+        run: |
+          set -e
+          echo '<p>Hello <b>world</b>!</p>' | python3 /usr/share/evolution-translate/translate/translate_runner.py --html --target en | tee out.json
+          python3 - <<'PY'
+import json,sys
+data=json.load(open('out.json')) if False else json.loads(open('out.json').read())
+assert data['translated'].strip()=="<p>HELLO <b>WORLD</b>!</p>", data
+print('OK')
+PY
+
