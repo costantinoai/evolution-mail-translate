@@ -7,9 +7,9 @@
       <description>Language code (ISO 639-1) to translate messages into.</description>
     </key>
     <key name="provider-id" type="s">
-      <default>'argos'</default>
+      <default>'google'</default>
       <summary>Active translation provider</summary>
-      <description>Provider identifier to use for translation (e.g., 'argos').</description>
+      <description>Provider identifier to use for translation (e.g., 'google', 'argos').</description>
     </key>
     <key name="preserve-format" type="b">
       <default>true</default>

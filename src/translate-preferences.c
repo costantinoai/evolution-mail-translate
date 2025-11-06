@@ -59,12 +59,10 @@ translate_preferences_show (GtkWindow *parent)
     GtkWidget *lbl_provider = gtk_label_new (_("Provider:"));
     gtk_widget_set_halign (lbl_provider, GTK_ALIGN_START);
     GtkWidget *provider_combo = gtk_combo_box_text_new ();
-    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "argos", "Argos Translate (offline)");
-    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "google", "Google Translate (online)");
-    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "mymemory", "MyMemory (online, free)");
-    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "libre", "LibreTranslate (online, free)");
+    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "argos", "Argos Translate (offline, privacy-focused)");
+    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "google", "Google Translate (online, free, recommended)");
     g_autofree gchar *cur_provider = g_settings_get_string (settings, "provider-id");
-    gtk_combo_box_set_active_id (GTK_COMBO_BOX (provider_combo), cur_provider && *cur_provider ? cur_provider : "argos");
+    gtk_combo_box_set_active_id (GTK_COMBO_BOX (provider_combo), cur_provider && *cur_provider ? cur_provider : "google");
 
     GtkWidget *lbl_venv = gtk_label_new (_("Argos venv path (optional):"));
     gtk_widget_set_halign (lbl_venv, GTK_ALIGN_START);

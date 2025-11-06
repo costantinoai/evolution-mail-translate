@@ -71,6 +71,7 @@ def translate_html_carefully(translator, html_content: str) -> str:
     """
     Translate HTML content while preserving structure.
     Uses BeautifulSoup to parse and only translate text nodes.
+    Implements batch translation for efficiency.
 
     Args:
         translator: deep-translator translator instance
@@ -82,11 +83,30 @@ def translate_html_carefully(translator, html_content: str) -> str:
     try:
         from bs4 import BeautifulSoup, NavigableString, Comment, Doctype
 
-        soup = BeautifulSoup(html_content, 'html.parser')
+        # Try multiple parsers in order of preference: lxml > html5lib > html.parser
+        parser = None
+        for p in ['lxml', 'html5lib', 'html.parser']:
+            try:
+                soup = BeautifulSoup(html_content, p)
+                parser = p
+                debug_log(f"Using parser: {parser}")
+                break
+            except Exception:
+                continue
 
-        def translate_node(node):
-            """Recursively translate text nodes in the tree"""
+        if not parser:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            parser = 'html.parser'
+            debug_log(f"Fallback to parser: {parser}")
+
+        # Collect all text nodes to translate in batch
+        texts_to_translate = []
+        nodes_to_update = []
+
+        def collect_translatable_nodes(node):
+            """Recursively collect text nodes that need translation"""
             if isinstance(node, NavigableString):
+                # Skip comments and doctypes
                 if isinstance(node, (Comment, Doctype)):
                     return
 
@@ -95,40 +115,95 @@ def translate_html_carefully(translator, html_content: str) -> str:
                 if not text or text.isspace():
                     return
 
-                # Skip very short text (likely structural)
+                # Skip very short text (likely structural like single spaces)
                 if len(text.strip()) < 2:
                     return
 
                 # Skip numbers-only text
-                if text.strip().replace(',', '').replace('.', '').isdigit():
+                stripped = text.strip()
+                if stripped.replace(',', '').replace('.', '').replace(' ', '').isdigit():
                     return
 
-                # Translate the text
-                try:
-                    # Preserve leading/trailing whitespace
-                    leading_space = text[:len(text) - len(text.lstrip())]
-                    trailing_space = text[len(text.rstrip()):]
-                    stripped = text.strip()
+                # Skip URLs and email addresses
+                if any(x in stripped.lower() for x in ['http://', 'https://', 'mailto:', '@']):
+                    return
 
-                    if stripped:
-                        translated = translator.translate(stripped)
-                        node.replace_with(leading_space + translated + trailing_space)
-                        debug_log(f"Translated: '{stripped}' -> '{translated}'")
-                except Exception as e:
-                    debug_log(f"Failed to translate node: {e}")
+                # Collect this text for translation
+                texts_to_translate.append(stripped)
+                nodes_to_update.append({
+                    'node': node,
+                    'leading': text[:len(text) - len(text.lstrip())],
+                    'trailing': text[len(text.rstrip()):]
+                })
             else:
                 # Recurse into child nodes
                 for child in list(node.children):
-                    translate_node(child)
+                    collect_translatable_nodes(child)
 
-        # Start translation from root
-        translate_node(soup)
+        # Collect all translatable text
+        collect_translatable_nodes(soup)
+
+        if not texts_to_translate:
+            debug_log("No translatable text found")
+            return str(soup)
+
+        debug_log(f"Collected {len(texts_to_translate)} text nodes for translation")
+
+        # Translate in batches for efficiency
+        translated_texts = []
+        batch_size = 50  # Process 50 texts at a time
+
+        for i in range(0, len(texts_to_translate), batch_size):
+            batch = texts_to_translate[i:i + batch_size]
+            try:
+                # Try batch translation first (faster)
+                if hasattr(translator, 'translate_batch'):
+                    batch_result = translator.translate_batch(batch)
+                    translated_texts.extend(batch_result)
+                    debug_log(f"Batch translated {len(batch)} texts")
+                else:
+                    # Fallback to individual translation
+                    for text in batch:
+                        try:
+                            translated_texts.append(translator.translate(text))
+                        except Exception as e:
+                            debug_log(f"Translation error for '{text[:50]}': {e}")
+                            translated_texts.append(text)  # Keep original on error
+            except Exception as e:
+                debug_log(f"Batch translation failed: {e}, falling back to individual")
+                # Fallback: translate individually
+                for text in batch:
+                    try:
+                        translated_texts.append(translator.translate(text))
+                    except Exception as e2:
+                        debug_log(f"Individual translation error for '{text[:50]}': {e2}")
+                        translated_texts.append(text)  # Keep original on error
+
+        # Apply translations back to nodes
+        for i, node_info in enumerate(nodes_to_update):
+            if i < len(translated_texts):
+                try:
+                    node = node_info['node']
+                    leading = node_info['leading']
+                    trailing = node_info['trailing']
+                    translated = translated_texts[i]
+
+                    node.replace_with(leading + translated + trailing)
+                    debug_log(f"Translated: '{texts_to_translate[i][:50]}' -> '{translated[:50]}'")
+                except Exception as e:
+                    debug_log(f"Failed to update node: {e}")
 
         return str(soup)
     except Exception as e:
         debug_log(f"HTML translation failed: {e}")
+        import traceback
+        debug_log(traceback.format_exc())
         # Fallback: translate as plain text
-        return translator.translate(html_content)
+        try:
+            return translator.translate(html_content)
+        except Exception as e2:
+            debug_log(f"Fallback translation also failed: {e2}")
+            return html_content  # Return original if all else fails
 
 
 def translate_online(
@@ -140,6 +215,7 @@ def translate_online(
 ) -> dict:
     """
     Translate text using the specified online provider via deep-translator.
+    Implements retry logic for network issues and rate limiting.
 
     Args:
         text: Text to translate
@@ -149,63 +225,156 @@ def translate_online(
         api_key: Optional API key for providers that require it
 
     Returns:
-        Dict with "translated" key containing translated text
+        Dict with "translated" key containing translated text, and optional "error" key
     """
+    import time
+
     try:
         from deep_translator import GoogleTranslator, MyMemoryTranslator, LibreTranslator
+        from deep_translator.exceptions import (
+            NotValidPayload,
+            TranslationNotFound,
+            RequestError,
+            TooManyRequests,
+        )
+    except ImportError as e:
+        error_msg = f"Required library not installed: {e}. Please run: pip install deep-translator"
+        debug_log(f"Import error: {error_msg}")
+        return {"error": error_msg, "translated": text}
 
-        debug_log(f"Translating with provider: {provider}")
-        debug_log(f"Target language: {target_lang}")
-        debug_log(f"Is HTML: {is_html}")
-        debug_log(f"Input length: {len(text)} chars")
+    debug_log(f"Translating with provider: {provider}")
+    debug_log(f"Target language: {target_lang}")
+    debug_log(f"Is HTML: {is_html}")
+    debug_log(f"Input length: {len(text)} chars")
 
+    # Validate input
+    if not text or not text.strip():
+        debug_log("Empty input text")
+        return {"translated": text}
+
+    try:
         # Detect source language
         source_lang = detect_language(text, is_html)
+        debug_log(f"Detected source language: {source_lang}")
+
         if source_lang == target_lang:
             debug_log("Source and target languages are the same, returning input")
             return {"translated": text}
 
-        # Create appropriate translator instance
+        # Create appropriate translator instance based on provider
         translator = None
 
         if provider == "google":
+            # Google Translate: Free, no API key, auto-detect supported
             translator = GoogleTranslator(source=source_lang, target=target_lang)
+            debug_log("Using Google Translate (free, unlimited)")
+
         elif provider == "mymemory":
-            translator = MyMemoryTranslator(source=source_lang, target=target_lang)
+            # MyMemory: Free but limited (500 chars/request), requires email in API call
+            # Note: MyMemory API has been known to be unstable
+            try:
+                translator = MyMemoryTranslator(source=source_lang, target=target_lang)
+                debug_log("Using MyMemory Translator (free, 500 char limit)")
+            except Exception as e:
+                debug_log(f"MyMemory initialization error: {e}")
+                raise ValueError(f"MyMemory translator not available: {e}")
+
         elif provider == "libre":
-            # Use public LibreTranslate instance or custom if specified
-            base_url = os.environ.get("LIBRE_TRANSLATE_URL", "https://libretranslate.com")
-            translator = LibreTranslator(source=source_lang, target=target_lang, base_url=base_url, api_key=api_key)
+            # LibreTranslate: Multiple public instances, some require API key
+            base_url = os.environ.get("LIBRE_TRANSLATE_URL", "https://libretranslate.de")
+            debug_log(f"Using LibreTranslate instance: {base_url}")
+
+            # Try with API key first, fallback to no key
+            try:
+                if api_key:
+                    translator = LibreTranslator(source=source_lang, target=target_lang,
+                                                base_url=base_url, api_key=api_key)
+                else:
+                    # Try without API key (some instances allow this)
+                    translator = LibreTranslator(source=source_lang, target=target_lang,
+                                                base_url=base_url)
+                debug_log("LibreTranslate initialized successfully")
+            except Exception as e:
+                debug_log(f"LibreTranslate initialization error: {e}")
+                if "api" in str(e).lower() or "key" in str(e).lower():
+                    raise ValueError(
+                        f"LibreTranslate requires API key for {base_url}. "
+                        "Try a different instance URL via LIBRE_TRANSLATE_URL environment variable "
+                        "(e.g., https://libretranslate.de or https://translate.argosopentech.com)"
+                    )
+                raise
+
         else:
-            raise ValueError(f"Unsupported provider: {provider}")
+            raise ValueError(f"Unsupported provider: {provider}. Supported: google, libre")
 
-        debug_log(f"Translator created: {translator}")
+        debug_log(f"Translator created: {type(translator).__name__}")
 
-        # Translate based on content type
-        if is_html:
-            translated = translate_html_carefully(translator, text)
-        else:
-            # For plain text, split into chunks if needed (some providers have limits)
-            if provider == "mymemory" and len(text) > 500:
-                # MyMemory has 500 char limit, split into sentences
-                sentences = text.split('. ')
-                translated_sentences = []
-                for sentence in sentences:
-                    if sentence:
-                        translated_sentences.append(translator.translate(sentence))
-                translated = '. '.join(translated_sentences)
-            else:
-                translated = translator.translate(text)
+        # Retry configuration
+        max_retries = 3
+        retry_delay = 1  # seconds
 
-        debug_log(f"Translation successful, output length: {len(translated)} chars")
-        return {"translated": translated}
+        for attempt in range(max_retries):
+            try:
+                # Translate based on content type
+                if is_html:
+                    translated = translate_html_carefully(translator, text)
+                else:
+                    # For plain text, handle provider-specific limits
+                    if provider == "mymemory" and len(text) > 500:
+                        # MyMemory has 500 char limit, split into sentences
+                        debug_log("Splitting text for MyMemory (500 char limit)")
+                        sentences = text.split('. ')
+                        translated_sentences = []
+                        for sentence in sentences:
+                            if sentence.strip():
+                                translated_sentences.append(translator.translate(sentence.strip()))
+                                time.sleep(0.5)  # Rate limiting
+                        translated = '. '.join(translated_sentences)
+                    else:
+                        translated = translator.translate(text)
 
-    except ImportError as e:
-        debug_log(f"Import error: {e}")
-        return {"error": f"deep-translator not available: {e}", "translated": text}
+                debug_log(f"Translation successful, output length: {len(translated)} chars")
+                return {"translated": translated}
+
+            except TooManyRequests as e:
+                debug_log(f"Rate limit hit (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                    debug_log(f"Waiting {wait_time}s before retry...")
+                    time.sleep(wait_time)
+                else:
+                    raise
+
+            except RequestError as e:
+                debug_log(f"Network error (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    wait_time = retry_delay * (2 ** attempt)
+                    debug_log(f"Waiting {wait_time}s before retry...")
+                    time.sleep(wait_time)
+                else:
+                    raise
+
+    except NotValidPayload as e:
+        error_msg = f"Invalid input for translation: {e}"
+        debug_log(f"Validation error: {error_msg}")
+        return {"error": error_msg, "translated": text}
+
+    except TranslationNotFound as e:
+        error_msg = f"Translation not found: {e}"
+        debug_log(f"Translation not found: {error_msg}")
+        return {"error": error_msg, "translated": text}
+
+    except ValueError as e:
+        error_msg = str(e)
+        debug_log(f"Configuration error: {error_msg}")
+        return {"error": error_msg, "translated": text}
+
     except Exception as e:
-        debug_log(f"Translation error: {e}")
-        return {"error": str(e), "translated": text}
+        error_msg = f"Translation failed: {type(e).__name__}: {e}"
+        debug_log(f"Unexpected error: {error_msg}")
+        import traceback
+        debug_log(traceback.format_exc())
+        return {"error": error_msg, "translated": text}
 
 
 def main():

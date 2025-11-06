@@ -52,7 +52,7 @@ translate_common_translate_async (const gchar         *body_html,
     /* Get provider ID from settings */
     g_autofree gchar *provider_id = translate_utils_get_provider_id ();
     if (!provider_id || !*provider_id) {
-        provider_id = g_strdup ("argos");  /* Default to argos if not set */
+        provider_id = g_strdup ("google");  /* Default to google if not set */
     }
 
     /* Create the translation provider */

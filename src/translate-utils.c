@@ -104,7 +104,7 @@ translate_utils_get_install_on_demand (void)
  *
  * Gets the provider ID setting from GSettings.
  * If no provider is configured or the setting is empty,
- * returns "argos" as the default (offline provider).
+ * returns "google" as the default (free online provider).
  *
  * Returns: (transfer full): A newly allocated string containing the provider
  *          ID. Free with g_free() when done.
@@ -119,10 +119,10 @@ translate_utils_get_provider_id (void)
         provider_id = g_settings_get_string (settings, "provider-id");
     }
 
-    /* Return configured provider or default to "argos" */
+    /* Return configured provider or default to "google" */
     if (provider_id && *provider_id) {
         return g_strdup (provider_id);
     }
 
-    return g_strdup ("argos");
+    return g_strdup ("google");
 }
