@@ -161,8 +161,8 @@ tp_argos_translate_async (gpointer              self,
 
     /* Preferred helper path order:
      * 1) TRANSLATE_HELPER_PATH (if set)
-     * 2) /usr/lib/evolution-translate/translate/translate_runner.py (packaged install)
-     * 3) ~/.local/lib/evolution-translate/translate/translate_runner.py (developer install)
+     * 2) /usr/share/evolution-translate/translate/translate_runner.py (installed)
+     * 3) ~/.local/lib/evolution-translate/translate/translate_runner.py (developer)
      */
     if (helper_env && *helper_env) {
         helper_path = helper_env;
