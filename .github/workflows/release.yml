@@ -1,41 +1,61 @@
-name: Release Debian Package
+name: Release
 
 on:
   push:
     tags:
-      - 'v[0-9]*.0.0'
+      - 'v*.*'
+    tags-ignore:
+      - 'v*.*.*'
 
 jobs:
-  build-release:
-    runs-on: ubuntu-22.04
+  build-and-release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install build deps
+      - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
             evolution-dev evolution-data-server-dev debhelper devscripts lintian xz-utils
 
       - name: Build Debian package
-        run: |
-          dpkg-buildpackage -us -uc -b
+        run: dpkg-buildpackage -us -uc -b
 
-      - name: Gather artifacts
+      - name: Build source tarball
+        id: dist
+        run: |
+          set -e
+          cmake -S . -B build-dist -DVERSION="$(dpkg-parsechangelog -S Version)"
+          cmake --build build-dist --target dist
+          TAR=$(ls -t build-dist/*.tar.xz | head -n1)
+          echo "tar=$TAR" >> $GITHUB_OUTPUT
+
+      - name: Gather artifacts and metadata
         id: gather
         run: |
           set -e
           DEB=$(ls -t ../*.deb | head -n1)
           echo "deb=$DEB" >> $GITHUB_OUTPUT
+
+          # Generate SHA256 checksums
           sha256sum "$DEB" | tee "${DEB}.sha256"
-          echo "sha=${DEB}.sha256" >> $GITHUB_OUTPUT
+          sha256sum "${{ steps.dist.outputs.tar }}" | tee "${{ steps.dist.outputs.tar }}.sha256"
+          echo "deb_sha=${DEB}.sha256" >> $GITHUB_OUTPUT
+          echo "tar_sha=${{ steps.dist.outputs.tar }}.sha256" >> $GITHUB_OUTPUT
+
+          # Extract metadata
           ARCH=$(dpkg --print-architecture)
           echo "arch=$ARCH" >> $GITHUB_OUTPUT
-          # Version from debian/changelog
           VER=$(dpkg-parsechangelog -S Version)
           echo "version=$VER" >> $GITHUB_OUTPUT
+
+      - name: Validate package quality
+        run: lintian --display-info --fail-on error "${{ steps.gather.outputs.deb }}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -46,6 +66,39 @@ jobs:
           prerelease: false
           files: |
             ${{ steps.gather.outputs.deb }}
-            ${{ steps.gather.outputs.sha }}
+            ${{ steps.gather.outputs.deb_sha }}
+            ${{ steps.dist.outputs.tar }}
+            ${{ steps.gather.outputs.tar_sha }}
+          body: |
+            ## Evolution Translation Extension ${{ steps.gather.outputs.version }}
+
+            ### Installation
+
+            **Ubuntu 24.04:**
+            ```bash
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$(basename ${{ steps.gather.outputs.deb }})
+            sudo apt install ./$(basename ${{ steps.gather.outputs.deb }})
+            evolution-translate-setup
+            ```
+
+            **From source:**
+            ```bash
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$(basename ${{ steps.dist.outputs.tar }})
+            tar -xf $(basename ${{ steps.dist.outputs.tar }})
+            cd evolution-translate-extension-*/
+            cmake -S . -B build
+            cmake --build build
+            sudo cmake --install build
+            evolution-translate-setup
+            ```
+
+            ### Verification
+
+            SHA256 checksums are provided for both packages.
+
+            ### Documentation
+
+            - [User Guide](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/USER_GUIDE.md)
+            - [Developer Guide](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/DEVELOPER_GUIDE.md)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
