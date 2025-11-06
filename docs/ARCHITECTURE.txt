@@ -1,0 +1,668 @@
+================================================================================
+EVOLUTION MAIL TRANSLATION EXTENSION - COMPREHENSIVE UNDERSTANDING
+================================================================================
+
+CREATED: 2025-11-06
+SCOPE: Complete analysis of translation implementation, providers, config, flow
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+The Evolution Mail Translation Extension is a GNOME Evolution plugin providing
+offline email translation using ArgosTranslate. The architecture uses a clean
+provider pattern with C/GObject for Evolution integration and Python for
+translation logic via subprocess communication.
+
+KEY CHARACTERISTICS:
+- Privacy-first: 100% offline, no external APIs
+- Extensible: Provider interface supports multiple backends
+- Async-first: Non-blocking operations throughout
+- Configuration-driven: GSettings for user preferences
+- Currently hardcoded to "argos" provider (only one registered)
+
+================================================================================
+1. TRANSLATION FLOW SUMMARY
+================================================================================
+
+ENTRY POINTS:
+  1. Menu: Tools → Translate → Translate Message
+  2. Keyboard: Ctrl+Shift+T (toggle translation on/off)
+  3. Show Original: Ctrl+Shift+O (restore original)
+
+FLOW STAGES:
+  1. User Action → Action Handler (translate-mail-ui.c:67-91)
+  2. Content Extraction → MIME parsing (translate-content.c:100-153)
+  3. Translation Request → Common logic (translate-common.c:40-77)
+  4. Provider Instantiation → Argos provider (translate-provider-argos.c)
+  5. Subprocess Spawn → Python helper (translate_runner.py)
+  6. Translation Processing → ArgosTranslate engine (Python)
+  7. Response Parsing → JSON extraction (translate-provider-argos.c:60-102)
+  8. DOM Update → Apply translation (translate-dom.c)
+  9. Display Refresh → Show translated content
+
+================================================================================
+2. KEY FILES & THEIR ROLES
+================================================================================
+
+CRITICAL C FILES:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ File                              │ Purpose                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ /src/translate-module.c           │ Plugin entry point (e_module_load)      │
+│                                   │ Registers providers & extensions        │
+│                                   │                                         │
+│ /src/translate-common.c           │ Centralized translation logic           │
+│                                   │ Gets settings, creates provider,        │
+│                                   │ initiates async translation              │
+│                                   │ HARDCODES provider ID "argos"          │
+│                                   │                                         │
+│ /src/translate-mail-ui.c          │ UI integration (menus, buttons)         │
+│                                   │ Action callbacks, keyboard shortcuts    │
+│                                   │ Menu items & toolbar                    │
+│                                   │                                         │
+│ /src/providers/translate-         │ Provider interface (GInterface)         │
+│    provider.h/c                   │ Registry for dynamic providers          │
+│                                   │ Interface wrappers                      │
+│                                   │                                         │
+│ /src/providers/translate-         │ Argos implementation                    │
+│    provider-argos.c               │ Subprocess spawning                     │
+│                                   │ Helper script location resolution       │
+│                                   │ JSON response parsing                   │
+│                                   │                                         │
+│ /src/translate-shell-view-        │ Evolution extension hook               │
+│    extension.c                    │ Initializes UI for Mail view only      │
+│                                   │                                         │
+│ /src/translate-dom.c              │ DOM state management                    │
+│                                   │ Store/restore original messages         │
+│                                   │ Toggle translation on/off               │
+│                                   │                                         │
+│ /src/translate-content.c          │ Message content extraction              │
+│                                   │ MIME parsing, charset conversion       │
+│                                   │ Plain text → HTML conversion            │
+│                                   │                                         │
+│ /src/translate-preferences.c      │ Settings dialog UI                      │
+│                                   │ Language selector (27 languages)        │
+│                                   │ Install-on-demand toggle                │
+│                                   │                                         │
+│ /src/translate-utils.c            │ GSettings utilities                     │
+│                                   │ Get target language, install flag       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CRITICAL PYTHON FILES:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ File                              │ Purpose                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ /tools/translate/translate_       │ Main translation orchestrator           │
+│ runner.py                         │ - Language detection (langdetect)       │
+│                                   │ - Model management (auto-download)      │
+│                                   │ - HTML-aware translation                │
+│                                   │ - GPU acceleration setup                │
+│                                   │ - JSON response output                  │
+│                                   │                                         │
+│ /tools/translate/gpu_utils.py     │ GPU acceleration (CUDA support)         │
+│                                   │                                         │
+│ /tools/translate/setup_models.py  │ Model installation helper               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+CONFIGURATION:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ File                                      │ Purpose                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ /data/gschema/org.gnome.evolution.       │ GSettings schema               │
+│ translate.gschema.xml                    │ Defines all settings           │
+│                                          │                                 │
+│ CMakeLists.txt                           │ Build configuration            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+3. PROVIDER PATTERN (THE HEART OF ARCHITECTURE)
+================================================================================
+
+INTERFACE (translate-provider.h):
+  GInterface TranslateProvider
+    ├─ translate_async()    → Async translation (non-blocking)
+    ├─ translate_finish()   → Retrieve async result
+    ├─ get_id()             → Provider identifier ("argos")
+    └─ get_name()           → Human-readable name ("Argos Translate (offline)")
+
+REGISTRY:
+  ├─ translate_provider_register(GType)    → Add provider to registry
+  ├─ translate_provider_new_by_id(id)      → Create instance by ID
+  └─ translate_provider_list_ids()         → List all registered providers
+
+CURRENT PROVIDER: ArgosTranslate
+  ID: "argos"
+  Name: "Argos Translate (offline)"
+  Implementation: /src/providers/translate-provider-argos.c
+  
+  Mechanism:
+    1. Spawn Python subprocess
+    2. Send HTML via stdin
+    3. Receive JSON response via stdout
+    4. Parse JSON, extract "translated" field
+    5. Return result via GTask callback
+
+EXTENSIBILITY:
+  The provider pattern is fully extensible. To add a new provider:
+    1. Create new file: translate-provider-<name>.h/c
+    2. Implement GInterface methods
+    3. Register in e_module_load()
+    4. Update translate-common.c to select it (if needed)
+
+CURRENT LIMITATION:
+  Provider ID "argos" is hardcoded in translate-common.c:53
+  To support multiple providers dynamically:
+    - Make provider ID configurable (via GSettings)
+    - Update UI to allow provider selection
+    - Implement provider fallback logic
+
+================================================================================
+4. CONFIGURATION MECHANISMS
+================================================================================
+
+PRIMARY: GSettings (org.gnome.evolution.translate)
+  ├─ target-language (string, default: "en")
+  │   └─ Used by: translate-utils.c:translate_utils_get_target_language()
+  │   └─ Set via: Preferences dialog
+  │
+  ├─ provider-id (string, default: "argos")
+  │   └─ Currently hardcoded, not used dynamically
+  │
+  └─ preserve-format (boolean, default: true)
+      └─ Currently unused (always passes --html to helper)
+
+SECONDARY: Provider Settings (org.gnome.evolution.translate.provider)
+  ├─ install-on-demand (boolean, default: true)
+  │   └─ Auto-download missing translation models
+  │   └─ Used by: translate-utils.c:translate_utils_get_install_on_demand()
+  │
+  └─ venv-path (string, default: "")
+      └─ Optional custom Python venv path (not yet implemented)
+
+TERTIARY: Environment Variables (Development)
+  ├─ TRANSLATE_HELPER_PATH
+  │   └─ Override translate_runner.py location
+  │
+  ├─ TRANSLATE_PYTHON_BIN
+  │   └─ Override Python interpreter path
+  │
+  └─ TRANSLATE_FAKE_UPPERCASE
+      └─ Fake translation mode (converts to uppercase)
+
+CONFIGURATION RETRIEVAL:
+  translate-common.c (line 50):
+    g_autofree gchar *target_lang = translate_utils_get_target_language();
+  
+  translate-provider-argos.c (line 218):
+    gboolean install_on_demand = translate_utils_get_install_on_demand();
+
+================================================================================
+5. SUBPROCESS COMMUNICATION PROTOCOL
+================================================================================
+
+COMMAND INVOCATION:
+  python3 /usr/share/evolution-translate/translate/translate_runner.py \
+          --target <lang> \
+          --html \
+          [--install-on-demand | --no-install-on-demand] \
+          [--debug]
+
+ARGUMENTS:
+  --target <lang>             ISO 639-1 language code (e.g., "en", "es")
+  --html | --text             Content type (default: text)
+  --install-on-demand         Auto-download missing models (default)
+  --no-install-on-demand      Disable auto-download
+  --debug                     Enable debug logging to /tmp/translate_debug.log
+
+INPUT (stdin):
+  Raw HTML content (no JSON wrapper)
+  Example:
+    <html><body><p>Hello world</p></body></html>
+
+OUTPUT (stdout):
+  JSON response with translated content
+  Format: {"translated": "translated content here"}
+  Example:
+    {"translated": "<html><body><p>Hola mundo</p></body></html>"}
+
+ERROR HANDLING:
+  stderr: Error messages from Python helper
+  return code: Non-zero on failure
+
+ASYNC COMMUNICATION:
+  C Code:
+    g_subprocess_communicate_utf8_async(proc, payload, cancellable,
+                                        on_helper_done, task);
+  
+  Callback: on_helper_done() (translate-provider-argos.c:104-131)
+    ├─ Reads stdout
+    ├─ Checks for errors
+    ├─ Parses JSON response
+    └─ Returns via GTask
+
+================================================================================
+6. PYTHON HELPER IMPLEMENTATION
+================================================================================
+
+ENTRY POINT:
+  translate_runner.py:main() (lines 296-342)
+  
+MAIN FUNCTION:
+  1. Parse command-line arguments
+  2. Read HTML from stdin
+  3. Call translate_offline()
+  4. Output JSON response
+
+TRANSLATION LOGIC:
+  translate_offline(text, target, is_html, install_on_demand) (lines 174-294)
+  
+  Steps:
+    1. Setup GPU acceleration (CUDA if available)
+    2. Detect source language (langdetect)
+       └─ Extract text from HTML first if needed
+    3. Check installed translation models
+    4. Auto-download if missing (if enabled)
+       ├─ Update package index
+       ├─ Find package
+       ├─ Download
+       └─ Install to ~/.local/share/argos-translate/packages/
+    5. Get translator from ArgosTranslate
+    6. Translate content:
+       ├─ HTML: Call translate_html_carefully() (preserves structure)
+       └─ Plain text: Simple translator.translate()
+    7. Return translated content
+
+HTML PRESERVATION:
+  translate_html_carefully(translator, html_content) (lines 108-172)
+  
+  Uses BeautifulSoup to:
+    1. Parse HTML with html.parser
+    2. Recursively process elements
+    3. Skip non-text nodes (tags, comments, doctype)
+    4. Skip very short text, numbers-only, symbols
+    5. Translate text nodes only
+    6. Preserve whitespace (leading/trailing)
+    7. Keep all HTML tags, attributes, structure intact
+    8. Return reconstructed HTML with translations
+
+LANGUAGE DETECTION:
+  Uses langdetect library
+  If HTML: extracts text content first
+  Fallback to "auto" if detection fails
+  Detects language as ISO 639-1 code (e.g., "en", "es", "fr")
+
+DEPENDENCIES:
+  Python 3.8+
+  argostranslate (translation engine)
+  langdetect (language detection)
+  beautifulsoup4 (HTML parsing)
+  CUDA/cuDNN (optional, GPU acceleration)
+
+================================================================================
+7. HARDCODED VS. CONFIGURABLE
+================================================================================
+
+HARDCODED ELEMENTS:
+  1. Provider ID "argos" (translate-common.c:53)
+     └─ To change: Modify hardcoded string
+     └─ To support multiple: Make configurable via GSettings
+  
+  2. Helper script location search order:
+     ├─ $TRANSLATE_HELPER_PATH (if set)
+     ├─ /usr/share/evolution-translate/translate/translate_runner.py
+     └─ ~/.local/lib/evolution-translate/translate/translate_runner.py
+  
+  3. Python binary search order:
+     ├─ $TRANSLATE_PYTHON_BIN (if set)
+     └─ ~/.local/lib/evolution-translate/venv/bin/python
+  
+  4. Menu structure (fixed keyboard shortcuts)
+     ├─ Ctrl+Shift+T (translate)
+     └─ Ctrl+Shift+O (show original)
+  
+  5. UI menu items (Tools → Translate → ...)
+     ├─ Translate Message
+     ├─ Show Original
+     └─ Translate Settings
+
+CONFIGURABLE ELEMENTS:
+  1. Target language (27 languages via GSettings)
+  2. Install-on-demand flag (GSettings checkbox)
+  3. Python venv path (GSettings, not yet used)
+  4. Helper script location (TRANSLATE_HELPER_PATH env var)
+  5. Python binary (TRANSLATE_PYTHON_BIN env var)
+  6. Debug mode (--debug flag in Python helper)
+
+================================================================================
+8. COMPLETE ARCHITECTURE DIAGRAM
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────┐
+│ EVOLUTION MAIL CLIENT (GNOME)                                  │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────┐
+│ C/GObject Layer (translate-module.so)                           │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│ ┌─ UI Layer                                                   │
+│ │  ├─ Shell View Extension (hooks Evolution)                │
+│ │  ├─ Mail UI (menus, buttons, keyboard shortcuts)          │
+│ │  ├─ Preferences Dialog                                    │
+│ │  └─ DOM Manager (HTML display state)                      │
+│ │                                                            │
+│ ├─ Translation Coordination Layer                           │
+│ │  ├─ Common Logic (centralized requests)                  │
+│ │  ├─ Content Extraction (MIME parsing)                    │
+│ │  └─ Utilities (GSettings, config)                        │
+│ │                                                            │
+│ └─ Provider Abstraction Layer                              │
+│    ├─ Provider Interface (GInterface)                       │
+│    ├─ Provider Registry (GHashTable: id → GType)            │
+│    └─ Argos Provider (subprocess spawning)                  │
+│                                                                │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ (subprocess pipes)
+┌──────────────────────────▼──────────────────────────────────────┐
+│ Python Helper (translate_runner.py)                             │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│ ├─ Language Detection (langdetect)                            │
+│ ├─ ArgosTranslate Engine (translation)                        │
+│ ├─ Model Management (auto-download)                           │
+│ ├─ HTML Parser (BeautifulSoup, structure preservation)        │
+│ └─ GPU Acceleration (CUDA support)                            │
+│                                                                │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────────┐
+│ Translation Models & Dependencies                              │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│ ├─ ArgosTranslate Models (offline)                            │
+│ ├─ OpenNMT Models (via ArgosTranslate)                        │
+│ ├─ CUDA/cuDNN (optional, GPU acceleration)                    │
+│ └─ Python Libraries                                           │
+│    ├─ argostranslate                                         │
+│    ├─ langdetect                                             │
+│    └─ beautifulsoup4                                         │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+
+================================================================================
+9. KEY DESIGN PATTERNS
+================================================================================
+
+1. PROVIDER PATTERN (Extensibility)
+   - GInterface defines contract
+   - Registry maps IDs to types
+   - Dynamic provider creation
+   - Allows multiple backends
+
+2. ASYNC/AWAIT PATTERN (Non-blocking)
+   - GTask for async operations
+   - Callbacks for completion
+   - Non-blocking subprocess communication
+   - Prevents UI freezing
+
+3. SUBPROCESS PATTERN (Python Integration)
+   - Spawns Python helper process
+   - Communicates via stdin/stdout
+   - Non-blocking async communication
+   - Isolates translation logic
+
+4. OBSERVER PATTERN (Evolution Integration)
+   - Extension mechanism
+   - Signal connections
+   - Event-driven UI updates
+
+5. SETTINGS PATTERN (Configuration)
+   - GSettings for persistence
+   - Schema-based validation
+   - Cached instances
+   - Environment variable overrides
+
+6. HTML PRESERVATION PATTERN (Structure Maintenance)
+   - BeautifulSoup parsing
+   - Selective text node translation
+   - Whitespace preservation
+   - Tag/attribute integrity
+
+================================================================================
+10. DEPENDENCIES
+================================================================================
+
+SYSTEM LIBRARIES:
+  - GLib/GObject 2.0 (type system, async, signals, data structures)
+  - GTK 3+ (UI widgets)
+  - Evolution-Shell (extension framework)
+  - Evolution-Mail (email UI integration)
+  - Evolution-Data-Server (email data backend)
+  - json-glib (JSON parsing)
+  - libcamel (MIME handling, message parsing)
+
+PYTHON LIBRARIES:
+  - argostranslate (translation models & engine)
+  - langdetect (language detection)
+  - beautifulsoup4 (HTML parsing)
+
+OPTIONAL:
+  - CUDA/cuDNN (GPU acceleration)
+
+BUILD TOOLS:
+  - CMake 3.10+
+  - pkg-config
+  - C compiler (gcc/clang)
+  - Python 3.8+
+
+================================================================================
+11. TRANSLATION FLOW EXAMPLE (CONCRETE)
+================================================================================
+
+USER ACTION:
+  User selects Spanish email in Evolution and presses Ctrl+Shift+T
+
+STEP-BY-STEP EXECUTION:
+
+1. HOTKEY PRESSED
+   Evolution captures Ctrl+Shift+T
+   └─ Triggers action_translate_message_cb() callback
+
+2. ACTION HANDLER (translate-mail-ui.c:68)
+   ├─ Check if message is already translated
+   ├─ If yes: Restore original and return
+   └─ If no: Extract message body HTML
+
+3. CONTENT EXTRACTION (translate-content.c:101)
+   ├─ Get selected message UID
+   ├─ Parse MIME structure
+   ├─ Find HTML part (or convert plain text)
+   ├─ Decode to UTF-8
+   └─ Return: <html><body><p>Hola mundo</p></body></html>
+
+4. TRANSLATION REQUEST (translate-common.c:41)
+   ├─ Get target language: gettings_get("target-language") → "en"
+   ├─ Create provider: translate_provider_new_by_id("argos")
+   └─ Call: translate_provider_translate_async()
+
+5. PROVIDER ASYNC CALL (translate-provider-argos.c:134)
+   ├─ Find Python helper location
+   ├─ Find Python binary location
+   ├─ Get install-on-demand flag from settings
+   ├─ Build command: python /usr/share/evolution-translate/translate/
+   │                        translate_runner.py --target en --html --install-on-demand
+   ├─ Spawn subprocess with pipes
+   ├─ Write HTML to stdin
+   └─ Set callback: on_helper_done
+
+6. PYTHON HELPER PROCESSES (translate_runner.py)
+   ├─ Parse arguments: --target en --html --install-on-demand
+   ├─ Read HTML from stdin
+   ├─ Call translate_offline("html", "en", True, True)
+   │  ├─ Setup GPU if available
+   │  ├─ Detect source language: "es" (langdetect)
+   │  ├─ Check installed models: "es" → "en"
+   │  ├─ Model not installed, auto-download enabled
+   │  │  ├─ Update package index
+   │  │  ├─ Download model
+   │  │  └─ Install to ~/.local/share/argos-translate/packages/
+   │  ├─ Get translator from ArgosTranslate
+   │  ├─ Call translate_html_carefully()
+   │  │  ├─ Parse HTML with BeautifulSoup
+   │  │  ├─ Translate text node: "Hola mundo" → "Hello world"
+   │  │  └─ Return: <html><body><p>Hello world</p></body></html>
+   │  └─ Return translated HTML
+   └─ Output JSON: {"translated": "<html><body><p>Hello world</p></body></html>"}
+
+7. RESPONSE HANDLING (translate-provider-argos.c:104)
+   ├─ on_helper_done() callback triggered
+   ├─ Read stdout from subprocess
+   ├─ Parse JSON response
+   ├─ Call extract_translated_field()
+   │  └─ Extract "translated" field: "<html>...Hello world...</html>"
+   └─ Return via GTask
+
+8. UI UPDATE CALLBACK (translate-mail-ui.c:41)
+   ├─ on_translate_finished() called
+   ├─ Finish async operation
+   └─ Call translate_dom_apply_to_shell_view()
+
+9. DOM UPDATE (translate-dom.c)
+   ├─ Save original message state
+   ├─ Load translated HTML into EMailDisplay
+   └─ Mark as "translated" for toggle
+
+10. DISPLAY REFRESH
+    └─ User sees translated email in preview pane
+       "Hello world" instead of "Hola mundo"
+
+USER INTERACTION:
+   Press Ctrl+Shift+T again → Restore original
+   Press Ctrl+Shift+O → Show original
+   Select different email → Clear translation state
+
+================================================================================
+12. CURRENT LIMITATIONS & FUTURE EXTENSIBILITY
+================================================================================
+
+CURRENT LIMITATIONS:
+
+1. Single Provider (Hardcoded)
+   - Only "argos" provider supported
+   - Provider ID hardcoded in translate-common.c:53
+   - No multi-provider support in UI
+
+2. Provider Interface Exists But Unused
+   - Provider ID setting in GSettings not used
+   - Provider selector in Preferences dialog is read-only
+
+3. Venv Path Not Yet Implemented
+   - GSettings key exists but code doesn't use it
+
+4. No Source Language Selection
+   - Only auto-detection via langdetect
+   - No manual source language override
+
+5. HTML Format Preservation
+   - Best-effort only
+   - Complex HTML may lose some formatting
+
+EXTENSIBILITY OPPORTUNITIES:
+
+1. MULTI-PROVIDER SUPPORT
+   - Make provider ID configurable (GSettings)
+   - Add provider selector to Preferences dialog
+   - Implement provider fallback logic
+   - Register multiple providers
+
+2. NEW PROVIDER BACKENDS
+   - Create translate-provider-<name>.h/c
+   - Implement GInterface methods
+   - Register in e_module_load()
+   - Examples: Google Translate API, DeepL, LibreTranslate
+
+3. ENHANCED CONFIGURATION
+   - API key management for external services
+   - Per-provider settings panels
+   - Language pair availability checking
+
+4. ADVANCED FEATURES
+   - Source language manual override
+   - Translation quality settings
+   - Model caching strategy
+   - Batch translation support
+   - Translation memory/caching
+
+5. PERFORMANCE IMPROVEMENTS
+   - Translation caching
+   - Model preloading
+   - Parallel translation
+   - Incremental HTML updates
+
+================================================================================
+13. QUICK REFERENCE - KEY CODE LOCATIONS
+================================================================================
+
+TRANSLATION TRIGGER:
+  /src/translate-mail-ui.c:67-91          action_translate_message_cb()
+
+TRANSLATION REQUEST:
+  /src/translate-common.c:40-77           translate_common_translate_async()
+
+PROVIDER INSTANTIATION:
+  /src/translate-common.c:53              provider_new_by_id("argos")
+
+PROVIDER INTERFACE:
+  /src/providers/translate-provider.h     GInterface definition
+  /src/providers/translate-provider.c     Registry & interface wrappers
+
+ARGOS PROVIDER:
+  /src/providers/translate-provider-argos.c:134-247
+                                          tp_argos_translate_async()
+  /src/providers/translate-provider-argos.c:60-102
+                                          extract_translated_field()
+
+JSON RESPONSE PARSING:
+  /src/providers/translate-provider-argos.c:104-131
+                                          on_helper_done()
+
+PYTHON HELPER:
+  /tools/translate/translate_runner.py:296-342  main()
+  /tools/translate/translate_runner.py:174-294  translate_offline()
+  /tools/translate/translate_runner.py:108-172  translate_html_carefully()
+
+SETTINGS ACCESS:
+  /src/translate-utils.c:45-61            translate_utils_get_target_language()
+  /src/translate-utils.c:89-100           translate_utils_get_install_on_demand()
+
+PREFERENCES DIALOG:
+  /src/translate-preferences.c:32-97      translate_preferences_show()
+
+GSETTINGS SCHEMA:
+  /data/gschema/org.gnome.evolution.translate.gschema.xml
+
+================================================================================
+CONCLUSION
+================================================================================
+
+The Evolution Mail Translation Extension is a well-architected system with:
+
+✓ Clean separation: C/GObject for Evolution integration, Python for logic
+✓ Extensible design: Provider pattern supports multiple backends
+✓ Async-first: Non-blocking operations throughout
+✓ Configuration-driven: GSettings for persistent user preferences
+✓ Privacy-focused: 100% offline, no external APIs
+✓ Structured communication: JSON for subprocess IPC
+✓ HTML-aware: BeautifulSoup preserves message structure
+
+The current implementation uses ArgosTranslate as the sole provider, but the
+architecture fully supports adding multiple translation backends. The provider
+pattern is properly implemented in the interface layer; the limitation is
+primarily the hardcoded provider ID in the common translation logic layer.
+
+For future enhancements: making provider selection configurable and implementing
+additional provider backends would be straightforward extensions of the current
+well-designed architecture.
+
+================================================================================
