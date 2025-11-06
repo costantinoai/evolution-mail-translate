@@ -16,6 +16,16 @@ override_dh_auto_configure:
 
 override_dh_auto_install:
 	dh_auto_install
+	# Remove RPATH/RUNPATH from the installed module to satisfy lintian
+	if [ -x /usr/bin/chrpath ]; then \
+	  mod="debian/evolution-translate-extension/usr/lib/evolution/modules/libtranslate-module.so"; \
+	  if [ -f "$mod" ]; then chrpath -d "$mod" || true; fi; \
+	fi
+	# Ensure the shared object is stripped (dh_strip will also run later)
+	if [ -x /usr/bin/strip ]; then \
+	  mod="debian/evolution-translate-extension/usr/lib/evolution/modules/libtranslate-module.so"; \
+	  if [ -f "$mod" ]; then strip --strip-unneeded "$mod" || true; fi; \
+	fi
 
 override_dh_install:
 	dh_install

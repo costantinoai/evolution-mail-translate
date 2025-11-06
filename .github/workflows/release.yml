@@ -20,7 +20,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential cmake pkg-config glib2.0-dev libjson-glib-dev \
             evolution-dev evolution-data-server-dev libebook1.2-dev \
-            debhelper devscripts lintian xz-utils
+            debhelper devscripts lintian xz-utils chrpath
 
       - name: Build Debian package
         run: dpkg-buildpackage -us -uc -b
