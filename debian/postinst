@@ -1,63 +1,20 @@
 #!/bin/bash
 # postinst script for evolution-translate-extension
-# Sets up Python virtual environment and installs translation dependencies
+# Note: No network operations or pip installs here.
 
 set -e
 
-VENV_DIR="/usr/lib/evolution-translate/venv"
-PYTHON_BIN="/usr/bin/python3"
-
 case "$1" in
     configure)
-        echo "Setting up Evolution Translation Extension..."
-
-        # Create virtual environment
-        if [ ! -x "$VENV_DIR/bin/python" ] || [ ! -f "$VENV_DIR/pyvenv.cfg" ]; then
-            echo "Creating Python virtual environment..."
-            if ! $PYTHON_BIN -m venv "$VENV_DIR"; then
-                echo "ERROR: Failed to create virtual environment at $VENV_DIR" >&2
-                exit 1
-            fi
-        fi
-
-        # Sanity check venv
-        if [ ! -x "$VENV_DIR/bin/python" ]; then
-            echo "ERROR: Virtual environment is missing python interpreter ($VENV_DIR/bin/python)" >&2
-            exit 1
-        fi
-
-        # Ensure pip is available inside the venv
-        "$VENV_DIR/bin/python" -m ensurepip --upgrade >/dev/null 2>&1 || true
-
-        # Install Python dependencies
-        echo "Installing translation dependencies (this may take a few minutes)..."
-        "$VENV_DIR/bin/python" -m pip install --quiet --upgrade pip
-        if ! "$VENV_DIR/bin/python" -m pip install --quiet argostranslate translatehtml langdetect; then
-            if "$VENV_DIR/bin/python" -m pip --help 2>/dev/null | grep -q "break-system-packages"; then
-                echo "Retrying dependency install with --break-system-packages"
-                "$VENV_DIR/bin/python" -m pip install --quiet --break-system-packages argostranslate translatehtml langdetect
-            else
-                echo "ERROR: Failed to install Python dependencies" >&2
-                exit 1
-            fi
-        fi
-
-        # Set proper permissions
-        chmod -R 755 "$VENV_DIR"
-        chmod -R 755 /usr/lib/evolution-translate/translate
-
-        # Install default translation models
-        echo "Installing default translation models..."
-        "$VENV_DIR/bin/python" /usr/lib/evolution-translate/translate/install_default_models.py || true
-
-        # GSettings schemas are compiled by GLib's dpkg triggers.
-        # No manual invocation of glib-compile-schemas is needed here.
-
-        echo "Evolution Translation Extension setup completed."
-        echo ""
-        echo "Please restart Evolution to load the extension:"
+        echo "Evolution Translation Extension installed."
+        echo
+        echo "Note: Python dependencies and models are managed per user."
+        echo "Run the following as the target user to set up the environment:"
+        echo "  evolution-translate-setup"
+        echo
+        echo "After setup, restart Evolution to load the extension:"
         echo "  killall evolution && evolution &"
-        echo ""
+        echo
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

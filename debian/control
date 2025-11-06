@@ -22,9 +22,8 @@ Depends: ${shlibs:Depends},
          ${misc:Depends},
          evolution (>= 3.52.0),
          python3 (>= 3.8),
-         python3-pip,
-         python3-venv,
          python3-bs4
+Recommends: python3-venv, python3-pip
 Description: Translation extension for Evolution Mail
  This extension adds translation capabilities to the GNOME Evolution
  email client, enabling users to translate email message bodies
