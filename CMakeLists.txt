@@ -12,7 +12,28 @@ include(GNUInstallDirs)
 #
 set(GETTEXT_PACKAGE "translate-module")
 set(RELEASE_NAME "Evolution Translate Extension")
-set(VERSION "1.0.0")
+
+# Determine project version (single source of truth)
+# Priority: explicitly provided -DVERSION => debian/changelog => fallback
+if(NOT DEFINED VERSION)
+  find_program(DPKG_PARSECHANGELOG dpkg-parsechangelog)
+  if(DPKG_PARSECHANGELOG)
+    execute_process(
+      COMMAND ${DPKG_PARSECHANGELOG} -S Version
+      OUTPUT_VARIABLE DEB_VERSION
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+    )
+    if(DEB_VERSION)
+      set(VERSION "${DEB_VERSION}")
+    else()
+      set(VERSION "1.0.0")
+    endif()
+  else()
+    set(VERSION "1.0.0")
+  endif()
+endif()
+
 set(VERSION_INFO "Production Release")
 set(LANGUAGE_SUPPORT_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/locale)
 
