@@ -140,6 +140,9 @@ tp_argos_translate_async (gpointer              self,
                           gpointer              user_data)
 {
     (void)source_lang_opt;
+    /* Basic parameter validation */
+    g_return_if_fail (input != NULL);
+    g_return_if_fail (target_lang != NULL);
     GTask *task = g_task_new (self, cancellable, callback, user_data);
 
     /* Build helper command */
@@ -164,20 +167,27 @@ tp_argos_translate_async (gpointer              self,
     if (helper_env && *helper_env) {
         helper_path = helper_env;
     } else {
-        helper_usr = g_build_filename ("/usr", "lib", "evolution-translate", "translate", "translate_runner.py", NULL);
-        g_autofree gchar *helper_usr_multi = g_build_filename ("/usr", "lib", "x86_64-linux-gnu", "evolution-translate", "translate", "translate_runner.py", NULL);
+        /* Prefer new data install location (architecture-independent) */
+        helper_usr = g_build_filename ("/usr", "share", "evolution-translate", "translate", "translate_runner.py", NULL);
         if (g_file_test (helper_usr, G_FILE_TEST_EXISTS)) {
             helper_choice = g_steal_pointer (&helper_usr);
-        } else if (g_file_test (helper_usr_multi, G_FILE_TEST_EXISTS)) {
-            helper_choice = g_steal_pointer (&helper_usr_multi);
         } else {
+            /* Developer/user-local location */
             const gchar *home = g_get_home_dir ();
             helper_local = g_build_filename (home, ".local", "lib", "evolution-translate", "translate", "translate_runner.py", NULL);
             if (g_file_test (helper_local, G_FILE_TEST_EXISTS)) {
                 helper_choice = g_steal_pointer (&helper_local);
             }
         }
-        helper_path = helper_choice ? helper_choice : "translate_runner.py"; /* last-resort fallback */
+
+        if (helper_choice) {
+            helper_path = helper_choice;
+        } else {
+            g_task_return_new_error (task, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED,
+                                     "Translate helper not found. Set TRANSLATE_HELPER_PATH or run 'evolution-translate-setup'.");
+            g_object_unref (task);
+            return;
+        }
     }
 
     /* Preferred python order:
@@ -189,35 +199,21 @@ tp_argos_translate_async (gpointer              self,
     if (python_env && *python_env) {
         python = python_env;
     } else {
-        python_usr = g_build_filename ("/usr", "lib", "evolution-translate", "venv", "bin", "python", NULL);
-        python_usr3 = g_build_filename ("/usr", "lib", "evolution-translate", "venv", "bin", "python3", NULL);
-        g_autofree gchar *python_usr_multi = g_build_filename ("/usr", "lib", "x86_64-linux-gnu", "evolution-translate", "venv", "bin", "python", NULL);
-        g_autofree gchar *python_usr3_multi = g_build_filename ("/usr", "lib", "x86_64-linux-gnu", "evolution-translate", "venv", "bin", "python3", NULL);
-        if (g_file_test (python_usr, G_FILE_TEST_IS_EXECUTABLE)) {
-            python = python_usr;
-        } else if (g_file_test (python_usr3, G_FILE_TEST_IS_EXECUTABLE)) {
-            python = python_usr3;
-        } else if (g_file_test (python_usr_multi, G_FILE_TEST_IS_EXECUTABLE)) {
-            python = python_usr_multi;
-        } else if (g_file_test (python_usr3_multi, G_FILE_TEST_IS_EXECUTABLE)) {
-            python = python_usr3_multi;
+        /* User-level venv location */
+        const gchar *home = g_get_home_dir ();
+        python_local = g_build_filename (home, ".local", "lib", "evolution-translate", "venv", "bin", "python", NULL);
+        if (g_file_test (python_local, G_FILE_TEST_IS_EXECUTABLE)) {
+            python = python_local;
         } else {
-            const gchar *home = g_get_home_dir ();
-            python_local = g_build_filename (home, ".local", "lib", "evolution-translate", "venv", "bin", "python", NULL);
-            if (g_file_test (python_local, G_FILE_TEST_IS_EXECUTABLE)) {
-                python = python_local;
-            } else {
-                /* Do not silently fall back to system python – it likely lacks dependencies */
-                g_task_return_new_error (task, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED,
-                                         "Python virtual environment not found. Please reinstall the extension or set TRANSLATE_PYTHON_BIN.");
-                g_object_unref (task);
-                return;
-            }
+            g_task_return_new_error (task, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED,
+                                     "Python environment not found. Set TRANSLATE_PYTHON_BIN or run 'evolution-translate-setup'.");
+            g_object_unref (task);
+            return;
         }
     }
 
-    g_message ("[argos] Using helper: %s", helper_path);
-    g_message ("[argos] Using python: %s", python);
+    g_debug ("[argos] Using helper: %s", helper_path);
+    g_debug ("[argos] Using python: %s", python);
 
     /* Get install-on-demand setting */
     gboolean install_on_demand = translate_utils_get_install_on_demand ();
@@ -227,8 +223,8 @@ tp_argos_translate_async (gpointer              self,
     const gchar *install_flag = install_on_demand ? "--install-on-demand" : "--no-install-on-demand";
     const gchar *argvv[] = { python, helper_path, "--target", target_copy,
                               is_html ? "--html" : "--text", install_flag, NULL };
-    g_message ("[argos] Running: %s %s --target %s %s %s", python, helper_path, target_copy,
-                is_html ? "--html" : "--text", install_flag);
+    g_debug ("[argos] Running: %s %s --target %s %s %s", python, helper_path, target_copy,
+             is_html ? "--html" : "--text", install_flag);
     g_autoptr(GError) error = NULL;
     GSubprocess *proc = g_subprocess_newv (argvv, G_SUBPROCESS_FLAGS_STDIN_PIPE | G_SUBPROCESS_FLAGS_STDOUT_PIPE, &error);
     if (!proc) {
@@ -242,6 +238,8 @@ tp_argos_translate_async (gpointer              self,
     const gchar *payload = input ? input : "";
 
     g_task_set_task_data (task, g_object_ref (proc), g_object_unref);
+    /* Release our local reference; task data holds its own reference */
+    g_object_unref (proc);
     g_subprocess_communicate_utf8_async (proc,
                                          payload,
                                          cancellable,
@@ -257,9 +255,10 @@ tp_argos_translate_finish (gpointer       self,
 {
     (void)self;
     g_return_val_if_fail (G_IS_TASK (res), FALSE);
+    gchar *ret = g_task_propagate_pointer (G_TASK (res), error);
     if (out_translated_html)
-        *out_translated_html = g_task_propagate_pointer (G_TASK (res), error);
-    return *error == NULL;
+        *out_translated_html = ret;
+    return ret != NULL;
 }
 
 static void
