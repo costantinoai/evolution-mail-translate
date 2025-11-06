@@ -2,6 +2,10 @@ name: CI
 
 on:
   push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
   pull_request:
 
 jobs:
@@ -19,7 +23,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
-            evolution-dev evolution-data-server-dev libebook1.2-dev
+            evolution evolution-dev evolution-data-server-dev libebook1.2-dev
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-Wall -Wextra"
           cmake --build build -j
 
@@ -41,7 +45,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake pkg-config glib2.0-dev libjson-glib-dev \
-            evolution-dev evolution-data-server-dev libebook1.2-dev \
+            evolution evolution-dev evolution-data-server-dev libebook1.2-dev \
             debhelper devscripts lintian cppcheck chrpath
 
       - name: Setup Python for testing
