@@ -49,10 +49,16 @@ translate_common_translate_async (const gchar         *body_html,
     /* Get target language from settings - properly managed memory */
     g_autofree gchar *target_lang = translate_utils_get_target_language ();
 
+    /* Get provider ID from settings */
+    g_autofree gchar *provider_id = translate_utils_get_provider_id ();
+    if (!provider_id || !*provider_id) {
+        provider_id = g_strdup ("argos");  /* Default to argos if not set */
+    }
+
     /* Create the translation provider */
-    g_autoptr(GObject) provider_obj = translate_provider_new_by_id ("argos");
+    g_autoptr(GObject) provider_obj = translate_provider_new_by_id (provider_id);
     if (!provider_obj) {
-        g_warning ("[translate] No provider found for 'argos'");
+        g_warning ("[translate] No provider found for '%s'", provider_id);
         return;
     }
 

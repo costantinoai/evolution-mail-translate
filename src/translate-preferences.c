@@ -58,9 +58,13 @@ translate_preferences_show (GtkWindow *parent)
 
     GtkWidget *lbl_provider = gtk_label_new (_("Provider:"));
     gtk_widget_set_halign (lbl_provider, GTK_ALIGN_START);
-    GtkWidget *provider_entry = gtk_entry_new ();
-    gtk_editable_set_editable (GTK_EDITABLE (provider_entry), FALSE);
-    gtk_entry_set_text (GTK_ENTRY (provider_entry), "argos");
+    GtkWidget *provider_combo = gtk_combo_box_text_new ();
+    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "argos", "Argos Translate (offline)");
+    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "google", "Google Translate (online)");
+    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "mymemory", "MyMemory (online, free)");
+    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "libre", "LibreTranslate (online, free)");
+    g_autofree gchar *cur_provider = g_settings_get_string (settings, "provider-id");
+    gtk_combo_box_set_active_id (GTK_COMBO_BOX (provider_combo), cur_provider && *cur_provider ? cur_provider : "argos");
 
     GtkWidget *lbl_venv = gtk_label_new (_("Argos venv path (optional):"));
     gtk_widget_set_halign (lbl_venv, GTK_ALIGN_START);
@@ -74,7 +78,7 @@ translate_preferences_show (GtkWindow *parent)
     gtk_grid_attach (GTK_GRID (grid), lbl_lang, 0, 0, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), combo, 1, 0, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), lbl_provider, 0, 1, 1, 1);
-    gtk_grid_attach (GTK_GRID (grid), provider_entry, 1, 1, 1, 1);
+    gtk_grid_attach (GTK_GRID (grid), provider_combo, 1, 1, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), lbl_venv, 0, 2, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), venv_entry, 1, 2, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), install_on_demand, 1, 3, 1, 1);
@@ -85,6 +89,11 @@ translate_preferences_show (GtkWindow *parent)
         const gchar *sel = gtk_combo_box_get_active_id (GTK_COMBO_BOX (combo));
         if (sel && *sel)
             g_settings_set_string (settings, "target-language", sel);
+
+        /* Save provider selection */
+        const gchar *sel_provider = gtk_combo_box_get_active_id (GTK_COMBO_BOX (provider_combo));
+        if (sel_provider && *sel_provider)
+            g_settings_set_string (settings, "provider-id", sel_provider);
 
         /* Save install-on-demand setting */
         gboolean install_enabled = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (install_on_demand));

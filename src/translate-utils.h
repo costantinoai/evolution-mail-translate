@@ -53,6 +53,17 @@ GSettings *translate_utils_get_provider_settings (void);
  */
 gboolean translate_utils_get_install_on_demand (void);
 
+/**
+ * translate_utils_get_provider_id:
+ *
+ * Gets the provider ID setting from GSettings.
+ * Returns the configured provider ID, or "argos" as default.
+ *
+ * Returns: (transfer full): A newly allocated string containing the provider
+ *          ID. Free with g_free().
+ */
+gchar *translate_utils_get_provider_id (void);
+
 G_END_DECLS
 
 #endif /* TRANSLATE_UTILS_H */

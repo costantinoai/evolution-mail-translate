@@ -25,6 +25,9 @@
 #include "translate-shell-view-extension.h"
 #include "translate-browser-extension.h"
 #include "providers/translate-provider-argos.h"
+#include "providers/translate-provider-google.h"
+#include "providers/translate-provider-mymemory.h"
+#include "providers/translate-provider-libre.h"
 #include "providers/translate-provider.h"
 
 /* Module Entry Points */
@@ -38,12 +41,22 @@ e_module_load (GTypeModule *type_module)
 	translate_shell_view_extension_type_register (type_module);
 	translate_browser_extension_type_register (type_module);
 
-	/* Register providers and add Argos to the registry */
+	/* Register offline providers */
 	translate_provider_argos_type_register (type_module);
 	translate_provider_register (TRANSLATE_TYPE_PROVIDER_ARGOS);
 
+	/* Register online providers (via deep-translator) */
+	translate_provider_google_type_register (type_module);
+	translate_provider_register (TRANSLATE_TYPE_PROVIDER_GOOGLE);
+
+	translate_provider_mymemory_type_register (type_module);
+	translate_provider_register (TRANSLATE_TYPE_PROVIDER_MYMEMORY);
+
+	translate_provider_libre_type_register (type_module);
+	translate_provider_register (TRANSLATE_TYPE_PROVIDER_LIBRE);
+
 	/* Log a message so automated checks can verify the module loaded */
-	g_message ("[translate] Module loaded");
+	g_message ("[translate] Module loaded with %d providers", 4);
 }
 
 G_MODULE_EXPORT void
