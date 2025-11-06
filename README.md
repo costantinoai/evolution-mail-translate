@@ -73,6 +73,7 @@ See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for detailed installation instructio
 
 1. Select an email and press `Ctrl+Shift+T` (or `Tools` → `Translate Message`)
 2. Toggle back to original with `Ctrl+Shift+T` again
+   - Alternatively, use `Ctrl+Shift+O` for “Show Original”
 3. Configure settings in `Edit` → `Preferences` → `Translate Settings`
 
 See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for complete usage documentation.
@@ -82,6 +83,28 @@ See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for complete usage documentation.
 - **[USER_GUIDE.md](docs/USER_GUIDE.md)** - Installation, usage, configuration, and troubleshooting
 - **[DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Architecture, development, and contribution guidelines
 - **[CHANGELOG.md](docs/CHANGELOG.md)** - Notable changes
+
+## Settings
+
+Open “Translate Settings” via Edit → Preferences → Translate Settings.
+
+- Target language: Choose your default translation target
+- Install models on demand: If enabled, missing Argos models are downloaded automatically the first time a pair is needed
+- Python venv: Create and manage your per-user venv with `evolution-translate-setup` (installs Python deps and optionally models)
+
+Tip: You can also set environment variables for development overrides:
+- `TRANSLATE_HELPER_PATH` to point to a local translate_runner.py
+- `TRANSLATE_PYTHON_BIN` to point to a specific Python interpreter
+
+## Docker Testing (developers)
+
+Local, test-only Docker builds live under `tests/docker/` (gitignored):
+- Self-contained (no bind mounts): `tests/docker/run-all-images.sh` (Ubuntu 24.04)
+- Base images (bind mounts required): `tests/docker/build-and-test.sh` (Ubuntu 22.04/24.04)
+
+Can Docker-built packages be used for releases? Yes — it’s common to build release artifacts in containers as long as you build on the target distro base (e.g., Ubuntu 24.04) with a clean, reproducible environment. We publish release artifacts built on Ubuntu 24.04 in CI and sign them. Docker images under `tests/docker/` are test-only and not used by CI.
+
+Supported targets: Ubuntu 24.04 (official), Ubuntu 22.04 (best‑effort). The code currently requires Evolution ≥ 3.52 for builds; 22.04 builds may not satisfy this and are treated as informational until compatibility is confirmed.
 
 ## Security & Privacy
 
