@@ -45,19 +45,35 @@ Helpers are installed to `/usr/share/evolution-translate/translate/`. Per‑user
 
 The CI workflow runs on every push and pull request with a two-stage approach:
 
-1. **Quick Check Stage** (fails fast, ~2-3 minutes):
-   - Python linting (black, flake8)
-   - Bash syntax validation
-   - Basic compilation check with warnings as errors
+1. **Quick Check Stage** (fails fast on critical issues, ~2-3 minutes):
+   - Bash syntax validation (blocking)
+   - Basic compilation check with warnings as errors (blocking)
+   - Python linting (informational only - not blocking)
 
 2. **Full Build Stage** (only runs if quick-check passes, ~5-7 minutes):
-   - Complete build with all compiler warnings enabled
-   - C static analysis (cppcheck)
-   - Python unit tests
-   - Debian package generation
-   - Lintian package validation
+   - Complete build with all compiler warnings enabled (blocking)
+   - C static analysis (informational only)
+   - Python unit tests (blocking)
+   - Debian package generation (blocking)
+   - Lintian package validation (blocking)
 
-**All checks are blocking** - the CI will fail if any validation step fails. This ensures code quality and prevents broken builds from being merged.
+**CI Philosophy:**
+- **Blocking checks**: Bash syntax, compilation, tests, package validity
+- **Informational checks**: Code formatting, linting, static analysis
+- **Developer responsibility**: Run linting locally before pushing (via tests/ workflows)
+- **CI focus**: Does it build? Do tests pass? Is the package valid?
+
+**Before pushing**, run local checks:
+```bash
+# Format Python code
+python3 -m black tools/translate
+
+# Check linting
+python3 -m flake8 tools/translate
+
+# Run tests (if tests/ is set up locally)
+./tests/run-tests.sh --quick
+```
 
 ## Building Packages for Release
 
