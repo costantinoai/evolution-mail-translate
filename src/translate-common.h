@@ -9,6 +9,7 @@
 
 #include <glib.h>
 #include <gio/gio.h>
+#include <shell/e-shell.h>
 #include "providers/translate-provider.h"
 
 G_BEGIN_DECLS
@@ -32,6 +33,30 @@ G_BEGIN_DECLS
 void translate_common_translate_async (const gchar     *body_html,
                                        GAsyncReadyCallback callback,
                                        gpointer         user_data);
+
+/**
+ * translate_common_translate_async_with_activity:
+ * @body_html: The HTML content to translate
+ * @shell_backend: EShellBackend to display activity status
+ * @callback: (scope async): Callback to invoke when translation completes
+ * @user_data: User data to pass to the callback
+ *
+ * Initiates an asynchronous translation with visual status feedback.
+ * Shows progress messages in the Evolution status bar at the bottom:
+ * 1. "Requesting translation from <provider>..."
+ * 2. "Translation request sent. Waiting for response..."
+ * 3. "Text translated by <provider>." (on success)
+ *
+ * This function provides the same functionality as translate_common_translate_async
+ * but adds visual feedback via the EActivity system for better user experience.
+ *
+ * The callback will be invoked with the translation results.
+ * Use translate_provider_translate_finish() in your callback to get the results.
+ */
+void translate_common_translate_async_with_activity (const gchar     *body_html,
+                                                      EShellBackend   *shell_backend,
+                                                      GAsyncReadyCallback callback,
+                                                      gpointer         user_data);
 
 G_END_DECLS
 

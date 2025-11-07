@@ -16,6 +16,7 @@
 
 #include <mail/e-mail-browser.h>
 #include <mail/e-mail-reader.h>
+#include <shell/e-shell.h>
 
 #include "translate-browser-extension.h"
 #include "translate-common.h"
@@ -51,12 +52,13 @@ on_translate_finished_browser (GObject *source_object,
  *
  * Handles the "Translate Message" action in the browser window.
  * Extracts the current message body and initiates translation
- * using the common translation logic.
+ * using the common translation logic with status bar feedback.
  */
 static void
 action_translate_message_cb (GtkAction *action,
                              gpointer   user_data)
 {
+    (void)action;  /* Unused parameter */
     TranslateBrowserExtension *self = user_data;
     EMailReader *reader = E_MAIL_READER (e_extension_get_extensible (E_EXTENSION (self)));
 
@@ -71,10 +73,15 @@ action_translate_message_cb (GtkAction *action,
     if (!body_html || !*body_html)
         return;
 
-    /* Use the centralized translation logic (fixes memory leak) */
-    translate_common_translate_async (body_html,
-                                      on_translate_finished_browser,
-                                      reader);
+    /* Get the shell backend for activity display */
+    EShell *shell = e_shell_get_default ();
+    EShellBackend *shell_backend = e_shell_get_backend_by_name (shell, "mail");
+
+    /* Use the centralized translation logic with activity feedback */
+    translate_common_translate_async_with_activity (body_html,
+                                                     shell_backend,
+                                                     on_translate_finished_browser,
+                                                     reader);
 }
 
 static void

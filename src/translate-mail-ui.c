@@ -62,7 +62,7 @@ on_translate_finished (GObject      *source_object,
  *
  * Handles the "Translate Message" action from the menu/toolbar.
  * Extracts the current message body and initiates translation
- * using the common translation logic.
+ * using the common translation logic with status bar feedback.
  */
 static void
 action_translate_message_cb (GtkAction *action,
@@ -84,10 +84,14 @@ action_translate_message_cb (GtkAction *action,
         return;
     }
 
-    /* Use the centralized translation logic (fixes memory leak) */
-    translate_common_translate_async (body_html,
-                                      on_translate_finished,
-                                      shell_view);
+    /* Get the shell backend for activity display */
+    EShellBackend *shell_backend = e_shell_view_get_shell_backend (shell_view);
+
+    /* Use the centralized translation logic with activity feedback */
+    translate_common_translate_async_with_activity (body_html,
+                                                     shell_backend,
+                                                     on_translate_finished,
+                                                     shell_view);
 }
 
 static const GtkActionEntry translate_menu_action[] = {
