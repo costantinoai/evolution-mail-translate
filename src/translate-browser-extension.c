@@ -17,7 +17,6 @@
 #include <mail/e-mail-browser.h>
 #include <mail/e-mail-reader.h>
 #include <shell/e-shell.h>
-#include <shell/e-shell-backend.h>
 
 #include "translate-browser-extension.h"
 #include "translate-common.h"
@@ -59,6 +58,7 @@ static void
 action_translate_message_cb (GtkAction *action,
                              gpointer   user_data)
 {
+    (void)action;  /* Unused parameter */
     TranslateBrowserExtension *self = user_data;
     EMailReader *reader = E_MAIL_READER (e_extension_get_extensible (E_EXTENSION (self)));
 
@@ -74,7 +74,6 @@ action_translate_message_cb (GtkAction *action,
         return;
 
     /* Get the shell backend for activity display */
-    EMailBrowser *browser = E_MAIL_BROWSER (reader);
     EShell *shell = e_shell_get_default ();
     EShellBackend *shell_backend = e_shell_get_backend_by_name (shell, "mail");
 

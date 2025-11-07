@@ -9,7 +9,7 @@
 
 #include <glib.h>
 #include <gio/gio.h>
-#include <shell/e-shell-backend.h>
+#include <shell/e-shell.h>
 #include "providers/translate-provider.h"
 
 G_BEGIN_DECLS

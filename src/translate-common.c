@@ -12,8 +12,8 @@
 #endif
 
 #include <glib.h>
-#include <e-util/e-activity.h>
-#include <shell/e-shell-backend.h>
+#include <e-util/e-util.h>
+#include <shell/e-shell.h>
 #include "translate-common.h"
 #include "translate-utils.h"
 #include "providers/translate-provider.h"
