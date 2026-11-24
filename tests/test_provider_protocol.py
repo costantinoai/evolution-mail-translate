@@ -26,13 +26,19 @@ def probe(tmp_path_factory):
         "if response == 'fallback':\n"
         "    response = '{\"translated\":\"offline result\"}' if '--no-install-on-demand' in sys.argv else '{\"error\":\"Google HTTP 429\"}'\n"
         "print(response)\n")
-    return executable, helper
+    schemas = directory / "schemas"
+    schemas.mkdir()
+    (schemas / "org.gnome.evolution.translate.gschema.xml").write_bytes(
+        (ROOT / "data/gschema/org.gnome.evolution.translate.gschema.xml").read_bytes())
+    subprocess.run(["glib-compile-schemas", str(schemas)], check=True, capture_output=True, text=True)
+    return executable, helper, schemas
 
 
 def run_probe(probe, provider, response):
-    executable, helper = probe
+    executable, helper, schemas = probe
     environment = dict(os.environ, LD_LIBRARY_PATH="/usr/lib/evolution",
-                       GSETTINGS_BACKEND="memory", TRANSLATE_PYTHON_BIN="/usr/bin/python3",
+                       GSETTINGS_BACKEND="memory", GSETTINGS_SCHEMA_DIR=str(schemas),
+                       TRANSLATE_PYTHON_BIN="/usr/bin/python3",
                        TRANSLATE_HELPER_PATH=str(helper), PROBE_RESPONSE=response)
     return subprocess.run([str(executable), str(MODULE), provider],
                           env=environment, text=True, capture_output=True, timeout=10)
