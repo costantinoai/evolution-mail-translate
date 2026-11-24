@@ -22,7 +22,7 @@ jobs:
       - name: Create test environment
         run: |
           python3 -m venv .venv
-          .venv/bin/python -m pip install pytest ruff -r requirements-online.txt
+          .venv/bin/python -m pip install pytest ruff==0.15.1 -r requirements-online.txt
       - name: Check every shell script and Python source
         run: |
           for script in scripts/*.sh; do bash -n "$script"; done
