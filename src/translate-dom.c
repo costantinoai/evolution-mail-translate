@@ -1,7 +1,13 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* Rendering defaults adapted from MoDD0/moddo-evolution-translator,
+ * commit d4d40cfe42cc0ad0c71f5062091fc3df1936ef60 (LGPL-2.1-or-later).
+ * Modified by Andrea Costantino on 2026-11-24: construct a valid document,
+ * put fallback CSS before the message's styles and cache only raw content. */
 /* Display-owned original state and a bounded cache of translated bodies. */
 #include <mail/e-mail-reader.h>
 #include <mail/e-mail-display.h>
+#include <libxml/HTMLparser.h>
+#include <libxml/HTMLtree.h>
 #include "translate-dom.h"
 #include "translate-content.h"
 #include "translate-utils.h"
@@ -96,6 +102,79 @@ is_translated_internal (EMailDisplay *display)
     return display && g_object_get_data (G_OBJECT (display), DOM_STATE_KEY) != NULL;
 }
 
+static xmlNode *
+find_child_element (xmlNode *parent, const gchar *name)
+{
+    for (xmlNode *child = parent->children; child; child = child->next)
+        if (child->type == XML_ELEMENT_NODE && !xmlStrcasecmp (child->name, BAD_CAST name))
+            return child;
+    return NULL;
+}
+
+static gchar *
+prepare_translated_document (const gchar *html)
+{
+    gsize length = strlen (html);
+    if (length > G_MAXINT)
+        return g_strdup (html);
+    htmlDocPtr document = htmlReadMemory (html, (int) length, NULL, "UTF-8",
+        HTML_PARSE_NONET | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING | HTML_PARSE_NODEFDTD);
+    if (!document)
+        return g_strdup (html);
+    xmlNode *root = xmlDocGetRootElement (document);
+    if (!root) {
+        xmlFreeDoc (document);
+        return g_strdup (html);
+    }
+    /* EWebView adds desktop-color classes when the body has no class.
+     * An owned class keeps the message's CSS and our defaults in control. */
+    xmlNode *body = find_child_element (root, "body");
+    if (body && !xmlHasProp (body, BAD_CAST "class"))
+        xmlNewProp (body, BAD_CAST "class", BAD_CAST "-evolution-translate-document");
+    xmlNode *head = find_child_element (root, "head");
+    if (!head) {
+        head = xmlNewNode (NULL, BAD_CAST "head");
+        if (root->children)
+            xmlAddPrevSibling (root->children, head);
+        else
+            xmlAddChild (root, head);
+    }
+    gboolean declared_scheme = FALSE;
+    for (xmlNode *child = head->children; child; child = child->next) {
+        if (child->type != XML_ELEMENT_NODE || xmlStrcasecmp (child->name, BAD_CAST "meta"))
+            continue;
+        xmlChar *name = xmlGetProp (child, BAD_CAST "name");
+        if (name && !xmlStrcasecmp (name, BAD_CAST "color-scheme"))
+            declared_scheme = TRUE;
+        xmlFree (name);
+    }
+    xmlNode *style = xmlNewNode (NULL, BAD_CAST "style");
+    xmlNewProp (style, BAD_CAST "id", BAD_CAST "evolution-translate-colors");
+    xmlNodeSetContent (style, BAD_CAST (declared_scheme ? "body { padding: 8px; }" :
+        "html { color-scheme: light; background-color: #ffffff; color: #000000; }"
+        "body { background-color: transparent; color: inherit; padding: 8px; }"));
+    if (head->children)
+        xmlAddPrevSibling (head->children, style);
+    else
+        xmlAddChild (head, style);
+    if (!declared_scheme) {
+        xmlNode *meta = xmlNewNode (NULL, BAD_CAST "meta");
+        xmlNewProp (meta, BAD_CAST "name", BAD_CAST "color-scheme");
+        xmlNewProp (meta, BAD_CAST "content", BAD_CAST "light");
+        xmlAddPrevSibling (style, meta);
+    }
+    htmlSetMetaEncoding (document, BAD_CAST "UTF-8");
+    if (!document->intSubset)
+        xmlCreateIntSubset (document, BAD_CAST "html", NULL, NULL);
+    xmlChar *buffer = NULL;
+    int size = 0;
+    htmlDocDumpMemory (document, &buffer, &size);
+    gchar *result = buffer ? g_strndup ((const gchar *) buffer, size) : g_strdup (html);
+    xmlFree (buffer);
+    xmlFreeDoc (document);
+    return result;
+}
+
 static void
 apply_translation_internal (EMailDisplay *display, const gchar *html, gboolean verbose_logging)
 {
@@ -111,7 +190,8 @@ apply_translation_internal (EMailDisplay *display, const gchar *html, gboolean v
         state->original_part_list = g_object_ref (parts);
         g_object_set_data_full (G_OBJECT (display), DOM_STATE_KEY, state, free_dom_state);
     }
-    e_web_view_load_string (E_WEB_VIEW (display), html);
+    g_autofree gchar *document = prepare_translated_document (html);
+    e_web_view_load_string (E_WEB_VIEW (display), document);
     g_autofree gchar *key = cache_key (display);
     if (key) {
         if (!s_translation_cache)

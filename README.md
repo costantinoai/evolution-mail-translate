@@ -1,124 +1,73 @@
 # Evolution Translation Extension
 
-**Offline email translation for GNOME Evolution using ArgosTranslate**
+Translate email bodies in GNOME Evolution with local Argos models or online providers.
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](#)
-[![License](https://img.shields.io/badge/license-LGPL--2.1%2B-green.svg)](#license)
-[![Documentation](https://img.shields.io/badge/docs-complete-brightgreen.svg)](docs/USER_GUIDE.md)
+[![Release](https://img.shields.io/github/v/release/costantinoai/evolution-mail-translate)](https://github.com/costantinoai/evolution-mail-translate/releases)
+[![License](https://img.shields.io/badge/license-LGPL--2.1%2B-green.svg)](LICENSE)
 
-## Overview
+## Features
 
-This Evolution extension adds instant, privacy-preserving email translation directly within GNOME Evolution. Translate foreign language emails to your preferred language with a single click—all processing happens locally on your machine with no data ever leaving your computer.
+- Translate from the mail preview or a separate message window, using the menu, toolbar or keyboard shortcut.
+- Keep HTML formatting and switch back to the original message.
+- Choose Argos, Google, MyMemory or LibreTranslate in Translate Settings.
+- Use installed Argos models if an online request fails, with a visible fallback notice.
+- Configure the shortcut once for both window types; changes take effect immediately.
+- Build against Evolution 3.52's GtkUIManager or Evolution 3.56+'s EUIManager.
 
-## Key Features
+## Install
 
-- **One-Click Translation**: Translate emails directly in the preview pane or message window
-- **100% Offline & Private**: Uses local translation models (ArgosTranslate), no internet required, no data transmitted
-- **Install-on-Demand**: Automatically downloads missing translation models as needed
-- **HTML Email Support**: Preserves formatting, styles, and structure in translated emails
-- **Auto Language Detection**: Automatically detects source language
-- **50+ Languages**: Supports translation between 50+ language pairs
-- **GPU Acceleration**: Automatically uses CUDA when available for faster translation
-- **Robust & Production-Ready**: Zero code duplication, comprehensive error handling
+### Ubuntu 24.04 package
 
-## Quick Start
-
-### Installation
-
-**For users:** Download and install the `.deb` package from [GitHub Releases](https://github.com/costantinoai/evolution-mail-translate/releases)
+Download the `.deb` from [GitHub Releases](https://github.com/costantinoai/evolution-mail-translate/releases), then run:
 
 ```bash
-# Recommended: lets APT resolve dependencies automatically
-sudo apt install ./evolution-translate-extension_1.0.0-1_amd64.deb
-
-# Restart Evolution
-killall evolution && evolution &
+sudo apt install ./evolution-translate-extension_1.2.2-1_amd64.deb
+evolution-translate-setup
 ```
 
-**For developers/advanced users (from source):**
+Setup creates a per-user Python environment and asks whether to download default Argos models. For online providers without Argos, use `evolution-translate-setup --online-only` instead. Close and reopen Evolution after installing the module.
+
+### From source
+
+Use a source build for other distributions or Evolution versions:
 
 ```bash
-# Install build dependencies (Ubuntu/Debian)
-sudo apt install cmake pkg-config evolution-dev evolution-data-server-dev \
-  python3 python3-venv python3-pip
-
-# Clone and build
+sudo apt install build-essential cmake pkg-config libglib2.0-dev libjson-glib-dev libxml2-dev \
+  evolution-dev evolution-data-server-dev libebook1.2-dev python3-venv
 git clone https://github.com/costantinoai/evolution-mail-translate.git
 cd evolution-mail-translate
-
-# Build and install to system directories (requires sudo)
 ./scripts/install-from-source.sh
-
-# Restart Evolution
-killall evolution 2>/dev/null || true
-evolution &
+evolution-translate-setup
 ```
 
-**Notes:**
-- Evolution only loads modules from `/usr/lib*/evolution/modules/`, so installation requires sudo
-- The module is installed to `/usr/lib*/evolution/modules/libtranslate-module.so`
-- Python helper scripts are installed to `/usr/share/evolution-translate/translate/`
-- Python environment and models are per-user: run `evolution-translate-setup` to create a venv under `~/.local/lib/evolution-translate/venv` and install models under `~/.local/share/argos-translate/packages/`
+Close and reopen Evolution. The module installs into Evolution's system module directory, so installation requires root; Python setup and models belong to each user. To remove a source installation, run `./scripts/uninstall.sh` from the checkout.
 
-**Uninstall (from source):**
+## Use
 
-```bash
-# From the repository directory
-./scripts/uninstall.sh
-```
+1. Select a message and press `Ctrl+Shift+T`, click the Translate toolbar button, or choose **Translate → Translate Message**.
+2. Press the shortcut again to restore the original, or use **Translate → Show Original**.
+3. Open **Translate → Translate Settings** to select the provider, target language, Python environment, model-download preference and shortcut.
 
-See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for detailed installation instructions and all available methods.
+The default shortcut remains `Ctrl+Shift+T`. Click its field in Translate Settings to change it; Backspace clears it. Settings apply to the preview and separate message windows.
 
-### Usage
+## Privacy and providers
 
-1. Select an email and press `Ctrl+Shift+T` (or `Tools` → `Translate Message`)
-2. Toggle back to original with `Ctrl+Shift+T` again
-   - Alternatively, use `Ctrl+Shift+O` for “Show Original”
-3. Configure settings in `Edit` → `Preferences` → `Translate Settings`
+**Argos processes message text locally. Google, MyMemory and LibreTranslate send the body text to the selected service.** New installations default to Google; select Argos for local translation. Headers and attachment contents are excluded from translation.
 
-See **[USER_GUIDE.md](docs/USER_GUIDE.md)** for complete usage documentation.
+Argos requires a model for the language pair. Downloading models needs a network connection; translating with installed models does not. Online services can impose quotas or require credentials. LibreTranslate accepts a custom instance through `LIBRE_TRANSLATE_URL` and an optional `LIBRE_API_KEY`, inherited from Evolution's environment.
 
-## Documentation
+If an online provider fails, the extension tries installed Argos models without downloading a new model. It reports a successful fallback or shows the provider error. It does not silently switch to another online service.
 
-- **[USER_GUIDE.md](docs/USER_GUIDE.md)** - Installation, usage, configuration, and troubleshooting
-- **[DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md)** - Architecture, development, and contribution guidelines
-- **[CHANGELOG.md](docs/CHANGELOG.md)** - Notable changes
+## Requirements and documentation
 
-## Settings
+- Evolution 3.52 or later, with matching development headers for a source build.
+- CMake 3.15 or later, a C compiler and the development libraries listed above.
+- Python 3 with `venv`; setup installs the dependencies for the selected backends.
 
-Open “Translate Settings” via Edit → Preferences → Translate Settings.
+See the [User Guide](docs/USER_GUIDE.md) for settings and troubleshooting, the [Developer Guide](docs/DEVELOPER_GUIDE.md) for tests and releases, and the [changelog](docs/CHANGELOG.md) for changes. Contributions follow [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
-- Target language: Choose your default translation target
-- Install models on demand: If enabled, missing Argos models are downloaded automatically the first time a pair is needed
-- Python venv: Create and manage your per-user venv with `evolution-translate-setup` (installs Python deps and optionally models)
+## License and credits
 
-Tip: You can also set environment variables for development overrides:
-- `TRANSLATE_HELPER_PATH` to point to a local translate_runner.py
-- `TRANSLATE_PYTHON_BIN` to point to a specific Python interpreter
+The project is licensed under LGPL-2.1-or-later; [LICENSE](LICENSE) contains the complete LGPL 2.1 text. Original copyright notices remain in the source. Adapted UI, shortcut, compute-type and rendering changes from [MoDD0's fork](https://github.com/MoDD0/moddo-evolution-translator) retain commit references and dated modification notices in the affected files.
 
-## Security & Privacy
-
-- **No Data Transmission**: All translation happens locally; message content never leaves your machine
-- **Body Only**: Only email body is processed; headers, addresses, and attachments are never touched
-- **Open Source Models**: Uses transparent, auditable open-source translation models
-- **No API Keys**: No accounts, no tracking, no telemetry
-
-## Requirements
-
-- **GNOME Evolution** ≥ 3.36
-- **Python** 3.8+
-- **CMake** 3.10+ (for building from source)
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
-
-## License
-
-This project follows the same LGPL-2.1+ licensing model as the Evolution example module files.
-
-## Credits
-
-- Built on [ArgosTranslate](https://github.com/argosopentech/argos-translate)
-- Integrates with [GNOME Evolution](https://wiki.gnome.org/Apps/Evolution)
-- Translation models from [OpenNMT](https://opennmt.net/)
+Built on [GNOME Evolution](https://gitlab.gnome.org/GNOME/evolution) and [Argos Translate](https://github.com/argosopentech/argos-translate), with online providers accessed through [deep-translator](https://github.com/nidhaloff/deep-translator) or the LibreTranslate API.

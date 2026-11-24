@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Modified by Andrea Costantino on 2026-11-24: configure the compute type before Argos import.
 """Argos translation helper. Message text is processed locally."""
 import argparse
 from contextlib import redirect_stdout
@@ -6,7 +8,7 @@ import logging
 import os
 import sys
 
-from gpu_utils import setup_gpu_acceleration
+from gpu_utils import setup_compute_type, setup_gpu_acceleration
 from helper_common import (
     TranslationError, configure_logging, detect_language, translate_content,
     translate_html_carefully as translate_html_carefully, write_result,
@@ -36,6 +38,7 @@ def translate_offline(text, target, is_html, install_on_demand=True,
                 return value.upper()
         return translate_content(FakeTranslator(), text, is_html, preserve_format)
     setup_gpu_acceleration()
+    setup_compute_type()
     import argostranslate.translate as argos
     # Argos logs entire paragraphs at INFO, even when the helper is not debugging.
     logging.getLogger("argostranslate.utils").disabled = True

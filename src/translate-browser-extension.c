@@ -1,4 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* UI integration adapted from MoDD0/moddo-evolution-translator, commits
+ * 967149e205bcb1632571595846029d3834f17314 and
+ * 6865134515f7e52458eadfc62b30cb94f867f404 (LGPL-2.1-or-later).
+ * Modified by Andrea Costantino on 2026-11-24. */
 /**
  * translate-browser-extension.c
  * Adds translation actions to EMailBrowser windows.
@@ -92,6 +96,9 @@ action_translate_settings_cb (EUIAction *action,
 }
 
 static const EUIActionEntry browser_entries[] = {
+    { "translate-menu",
+      NULL, N_("_Translate"), NULL, NULL,
+      NULL, NULL, NULL, NULL },
     { "translate-message-action",
       NULL, N_("_Translate"), NULL,
       N_("Translate the selected message"),
@@ -137,33 +144,37 @@ add_ui (TranslateBrowserExtension *self, EMailBrowser *browser)
     const gchar *eui_def =
         "<eui>"
         "  <menu id='main-menu'>"
-        "    <section id='view-menu-translate' after='view-menu-actions'>"
-        "      <item action='" BROWSER_ACTION_GROUP ".translate-message-action'/>"
-        "      <item action='" BROWSER_ACTION_GROUP ".translate-show-original-action'/>"
-        "      <separator/>"
-        "      <item action='" BROWSER_ACTION_GROUP ".translate-settings-action'/>"
-        "    </section>"
+        "    <placeholder id='custom-menus'>"
+        "      <submenu action='translate-menu'>"
+        "        <item action='translate-message-action'/>"
+        "        <item action='translate-show-original-action'/>"
+        "        <separator/>"
+        "        <item action='translate-settings-action'/>"
+        "      </submenu>"
+        "    </placeholder>"
         "  </menu>"
+        "  <toolbar id='main-toolbar-with-headerbar'>"
+        "    <placeholder id='mail-toolbar-common'>"
+        "      <item action='translate-message-action'/>"
+        "    </placeholder>"
+        "  </toolbar>"
+        "  <toolbar id='main-toolbar-without-headerbar'>"
+        "    <placeholder id='mail-toolbar-common'>"
+        "      <item action='translate-message-action'/>"
+        "    </placeholder>"
+        "  </toolbar>"
         "</eui>";
 
     EMailReader *reader = E_MAIL_READER (browser);
     EUIManager *ui_manager = e_mail_reader_get_ui_manager (reader);
-    GError *error = NULL;
-
     e_ui_manager_add_actions_with_eui_data (
         ui_manager,
         BROWSER_ACTION_GROUP,
         GETTEXT_PACKAGE,
         browser_entries, G_N_ELEMENTS (browser_entries),
-        "translate-browser-ui",
-        eui_def, -1,
-        self, &error);
-
-    if (error) {
-        g_warning ("[translate-browser] Failed to add UI: %s", error->message);
-        g_error_free (error);
-        return;
-    }
+        self,
+        eui_def);
+    m_utils_configure_translate_action (e_ui_manager_get_action (ui_manager, "translate-message-action"));
 
     g_signal_connect_swapped (browser, "update-actions",
                               G_CALLBACK (update_actions_cb), self);
@@ -193,9 +204,9 @@ action_show_original_cb (GtkAction *action,
 
 static const GtkActionEntry browser_entries[] = {
     { "translate-message-action",
-      GTK_STOCK_ADD,
+      NULL,
       N_("_Translate"),
-      "<Control><Shift>T",
+      NULL,
       N_("Translate the selected message"),
       G_CALLBACK (action_translate_message_cb) },
     { "translate-show-original-action",
@@ -253,6 +264,11 @@ add_ui (TranslateBrowserExtension *self, EMailBrowser *browser)
         "      </placeholder>"
         "    </menu>"
         "  </menubar>"
+        "  <toolbar name='main-toolbar'>"
+        "    <placeholder name='mail-toolbar-common'>"
+        "      <toolitem action='translate-message-action'/>"
+        "    </placeholder>"
+        "  </toolbar>"
         "</ui>";
 
     GtkUIManager *ui_manager = e_mail_browser_get_ui_manager (browser);
@@ -261,6 +277,7 @@ add_ui (TranslateBrowserExtension *self, EMailBrowser *browser)
     gtk_action_group_add_actions (group, browser_entries, G_N_ELEMENTS (browser_entries), self);
     gtk_action_group_add_actions (group, browser_settings_entries, G_N_ELEMENTS (browser_settings_entries), self);
     gtk_ui_manager_insert_action_group (ui_manager, group, 0);
+    m_utils_configure_translate_action (gtk_action_group_get_action (group, "translate-message-action"));
     g_object_unref (group);
 
     GError *error = NULL;

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Modified by Andrea Costantino on 2026-11-24: cover invalid Libre endpoints.
 import importlib
 import sys
 import types
@@ -82,3 +84,34 @@ def test_html_network_failures_reach_retry_logic(online, monkeypatch):
     result = runner.translate_online("<p>hello</p>", "en", "google", True)
     assert result == {"translated": "<p>translated</p>"}
     assert delays == [1, 2]
+
+
+def test_libre_html_endpoint_reports_instance_problem(online, monkeypatch):
+    runner, library, _ = online
+    library.GoogleTranslator = library.MyMemoryTranslator = object
+    requests = sys.modules["requests"]
+
+    class HtmlResponse:
+        status_code = 200
+        ok = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def json(self):
+            raise ValueError("HTML landing page instead of a translation response")
+
+    monkeypatch.setattr(requests, "post", lambda *args, **kwargs: HtmlResponse(), raising=False)
+    result = runner.translate_online("hello", "en", "libre", source_lang="fr")
+    assert "error" in result
+    assert "JSON" in result["error"] and "instance" in result["error"]
+    assert "translated" not in result
+
+
+def test_libre_default_points_to_official_api(online, monkeypatch):
+    runner, _, _ = online
+    monkeypatch.delenv("LIBRE_TRANSLATE_URL", raising=False)
+    assert runner.LibreTranslator("fr", "en").url == "https://libretranslate.com/translate"

@@ -1,4 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* Configurable shortcut adapted from MoDD0/moddo-evolution-translator,
+ * commit 6865134515f7e52458eadfc62b30cb94f867f404 (LGPL-2.1-or-later).
+ * Modified by Andrea Costantino on 2026-11-24: use GTK's accelerator editor. */
 /* Translate Preferences dialog implementation */
 
 #ifdef HAVE_CONFIG_H
@@ -29,6 +32,50 @@ static const Lang k_langs[] = {
     {"ar", N_("Arabic")}, {"he", N_("Hebrew")}, {"hi", N_("Hindi")},
     {"ja", N_("Japanese")}, {"ko", N_("Korean")}, {"zh", N_("Chinese")},
 };
+
+static void
+shortcut_edited (GtkCellRendererAccel *cell, const gchar *path, guint keyval,
+                 GdkModifierType modifiers, guint hardware_keycode, GtkListStore *store)
+{
+    (void) cell;
+    (void) hardware_keycode;
+    GtkTreeIter iter;
+    if (gtk_accelerator_valid (keyval, modifiers) &&
+        gtk_tree_model_get_iter_from_string (GTK_TREE_MODEL (store), &iter, path))
+        gtk_list_store_set (store, &iter, 0, keyval, 1, modifiers, -1);
+}
+
+static void
+shortcut_cleared (GtkCellRendererAccel *cell, const gchar *path, GtkListStore *store)
+{
+    (void) cell;
+    GtkTreeIter iter;
+    if (gtk_tree_model_get_iter_from_string (GTK_TREE_MODEL (store), &iter, path))
+        gtk_list_store_set (store, &iter, 0, 0, 1, 0, -1);
+}
+
+static GtkWidget *
+shortcut_editor (const gchar *accel)
+{
+    guint keyval;
+    GdkModifierType modifiers;
+    gtk_accelerator_parse (accel, &keyval, &modifiers);
+    GtkListStore *store = gtk_list_store_new (2, G_TYPE_UINT, G_TYPE_UINT);
+    GtkTreeIter iter;
+    gtk_list_store_insert_with_values (store, &iter, 0, 0, keyval, 1, modifiers, -1);
+    GtkWidget *view = gtk_tree_view_new_with_model (GTK_TREE_MODEL (store));
+    gtk_tree_view_set_headers_visible (GTK_TREE_VIEW (view), FALSE);
+    GtkCellRenderer *cell = gtk_cell_renderer_accel_new ();
+    g_object_set (cell, "editable", TRUE, "accel-mode", GTK_CELL_RENDERER_ACCEL_MODE_GTK, NULL);
+    GtkTreeViewColumn *column = gtk_tree_view_column_new_with_attributes (
+        NULL, cell, "accel-key", 0, "accel-mods", 1, NULL);
+    gtk_tree_view_append_column (GTK_TREE_VIEW (view), column);
+    g_signal_connect_object (cell, "accel-edited", G_CALLBACK (shortcut_edited), store, 0);
+    g_signal_connect_object (cell, "accel-cleared", G_CALLBACK (shortcut_cleared), store, 0);
+    g_object_unref (store);
+    gtk_widget_set_tooltip_text (view, _("Click to change the shortcut; Backspace clears it."));
+    return view;
+}
 
 void
 translate_preferences_show (GtkWindow *parent)
@@ -80,6 +127,11 @@ translate_preferences_show (GtkWindow *parent)
     gboolean current_install_on_demand = g_settings_get_boolean (provider_settings, "install-on-demand");
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (install_on_demand), current_install_on_demand);
 
+    g_autofree gchar *current_shortcut = g_settings_get_string (settings, "translate-shortcut");
+    GtkWidget *shortcut = shortcut_editor (current_shortcut);
+    GtkWidget *lbl_shortcut = gtk_label_new (_("Translate shortcut:"));
+    gtk_widget_set_halign (lbl_shortcut, GTK_ALIGN_START);
+
     gtk_grid_attach (GTK_GRID (grid), lbl_lang, 0, 0, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), combo, 1, 0, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), lbl_provider, 0, 1, 1, 1);
@@ -87,6 +139,8 @@ translate_preferences_show (GtkWindow *parent)
     gtk_grid_attach (GTK_GRID (grid), lbl_venv, 0, 2, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), venv_entry, 1, 2, 1, 1);
     gtk_grid_attach (GTK_GRID (grid), install_on_demand, 1, 3, 1, 1);
+    gtk_grid_attach (GTK_GRID (grid), lbl_shortcut, 0, 4, 1, 1);
+    gtk_grid_attach (GTK_GRID (grid), shortcut, 1, 4, 1, 1);
 
     gtk_widget_show_all (dlg);
     if (gtk_dialog_run (GTK_DIALOG (dlg)) == GTK_RESPONSE_OK) {
@@ -106,6 +160,14 @@ translate_preferences_show (GtkWindow *parent)
 
         g_settings_set_string (provider_settings, "venv-path",
                                gtk_entry_get_text (GTK_ENTRY (venv_entry)));
+        GtkTreeModel *model = gtk_tree_view_get_model (GTK_TREE_VIEW (shortcut));
+        GtkTreeIter iter;
+        if (gtk_tree_model_get_iter_first (model, &iter)) {
+            guint keyval, modifiers;
+            gtk_tree_model_get (model, &iter, 0, &keyval, 1, &modifiers, -1);
+            g_autofree gchar *accel = keyval ? gtk_accelerator_name (keyval, modifiers) : g_strdup ("");
+            g_settings_set_string (settings, "translate-shortcut", accel);
+        }
     }
     gtk_widget_destroy (dlg);
 }

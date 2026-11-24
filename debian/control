@@ -1,3 +1,4 @@
+# Modified by Andrea Costantino on 2026-11-24: add libxml2 development dependency.
 Source: evolution-translate-extension
 Section: gnome
 Priority: optional
@@ -12,6 +13,7 @@ Build-Depends: debhelper-compat (= 13),
                libecal2.0-dev,
                libedataserver1.2-dev,
                libjson-glib-dev,
+               libxml2-dev,
                chrpath
 Standards-Version: 4.6.0
 Homepage: https://github.com/costantinoai/evolution-mail-translate
@@ -37,7 +39,8 @@ Description: Translation extension for Evolution Mail
   - Toggle between original and translated content
   - Support for multiple languages
   - HTML-aware translation that preserves formatting
-  - Privacy-focused: no data sent to external servers
+  - Local Argos models or online translation providers
  .
- The extension uses Argos Translate for fully local, offline translation.
- No API keys are required, and all processing happens on your machine.
+ Argos processes message text locally; Google, MyMemory and LibreTranslate
+ send body text to the selected service. Model downloads need a connection.
+ LibreTranslate instances may require an API key.

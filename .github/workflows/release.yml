@@ -1,4 +1,5 @@
 name: Release
+# Modified by Andrea Costantino on 2026-11-24: declare libxml2 and source prefix.
 
 on:
   push:
@@ -29,7 +30,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config libglib2.0-dev libjson-glib-dev \
+          sudo apt-get install -y build-essential cmake pkg-config libglib2.0-dev libjson-glib-dev libxml2-dev \
             evolution evolution-dev evolution-data-server-dev libebook1.2-dev \
             debhelper devscripts lintian xz-utils chrpath
 
@@ -85,6 +86,10 @@ jobs:
           body: |
             ## Evolution Translation Extension ${{ steps.gather.outputs.version }}
 
+            See the [changelog](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/CHANGELOG.md) for the changes in this release.
+
+            Argos processes text locally. Online providers receive message body text; choose the provider in Translate Settings.
+
             ### Installation
 
             **Ubuntu 24.04:**
@@ -99,7 +104,7 @@ jobs:
             wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ steps.gather.outputs.tar_name }}
             tar -xf ${{ steps.gather.outputs.tar_name }}
             cd evolution-translate-extension-*/
-            cmake -S . -B build
+            cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr
             cmake --build build
             sudo cmake --install build
             evolution-translate-setup

@@ -1,5 +1,7 @@
 # Evolution Mail Translation - Architecture Diagrams
 
+> Historical implementation notes. Code excerpts and line numbers describe an earlier version; use the [Developer Guide](DEVELOPER_GUIDE.md) and [User Guide](USER_GUIDE.md) for current behavior, providers, setup and tests.
+
 ## 1. COMPLETE TRANSLATION FLOW (START TO END)
 
 ```

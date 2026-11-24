@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Modified by Andrea Costantino on 2026-11-24: use the official Libre API
+# and explain non-JSON instance responses without exposing their contents.
 """Online translation helper. stdin: text/HTML; stdout: a JSON result or error."""
 import argparse
 import logging
@@ -27,7 +30,7 @@ class LibreTranslator:
     """The existing Libre endpoint also supports instances without an API key."""
     def __init__(self, source, target, api_key=None):
         self.source, self.target, self.api_key = source, target, api_key
-        self.url = os.environ.get("LIBRE_TRANSLATE_URL", "https://libretranslate.de").rstrip("/") + "/translate"
+        self.url = os.environ.get("LIBRE_TRANSLATE_URL", "https://libretranslate.com").rstrip("/") + "/translate"
 
     def translate(self, text):
         import requests
@@ -39,7 +42,13 @@ class LibreTranslator:
                 raise TranslationError("LibreTranslate is rate-limiting requests. Try again later or use Argos offline.")
             if not response.ok:
                 raise TranslationError(f"LibreTranslate returned HTTP {response.status_code}. Check the configured instance and API key.")
-            result = response.json()
+            try:
+                result = response.json()
+            except ValueError as error:
+                raise TranslationError(
+                    "LibreTranslate did not return JSON. Check the configured instance URL "
+                    "and API key, or use Argos offline."
+                ) from error
         translated = result.get("translatedText") if isinstance(result, dict) else None
         if not isinstance(translated, str):
             raise TranslationError("LibreTranslate returned an invalid response.")

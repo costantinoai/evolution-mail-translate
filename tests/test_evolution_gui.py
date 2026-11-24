@@ -1,4 +1,6 @@
 """Click the extension's actions in the real Evolution executable on private Xvfb."""
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Modified by Andrea Costantino on 2026-11-24: modern API, controls and rendering regressions.
 import os
 from pathlib import Path
 import shlex
@@ -17,9 +19,13 @@ def gui_driver(tmp_path_factory):
     driver = directory / "driver.so"
     flags = shlex.split(subprocess.check_output(
         ["pkg-config", "--cflags", "--libs", "evolution-mail-3.0", "gmodule-2.0"], text=True))
-    subprocess.run(["gcc", "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
+    version = subprocess.check_output(["pkg-config", "--modversion", "evolution-shell-3.0"], text=True)
+    if tuple(map(int, version.strip().split(".")[:2])) >= (3, 56):
+        flags.append("-DHAVE_EUI_MANAGER=1")
+    compiled = subprocess.run(["gcc", "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
                     "-Wno-deprecated-declarations", str(ROOT / "tests/evolution_driver.c"),
-                    "-o", str(driver), *flags, "-ldl"], check=True, capture_output=True, text=True)
+                    "-o", str(driver), *flags, "-ldl"], capture_output=True, text=True)
+    assert compiled.returncode == 0, compiled.stdout + compiled.stderr
     modules = directory / "modules"
     modules.mkdir()
     for source in Path("/usr/lib/evolution/modules").glob("*.so"):
@@ -30,6 +36,10 @@ def gui_driver(tmp_path_factory):
     helper.write_text(
         "import json, os, sys, time\n"
         "data=sys.stdin.read()\ntime.sleep(1)\n"
+        "counter=os.environ.get('TRANSLATE_GUI_HELPER_COUNT')\n"
+        "if counter:\n"
+        "    from pathlib import Path\n"
+        "    p=Path(counter); p.write_text(str(int(p.read_text())+1) if p.exists() else '1')\n"
         "mode=os.environ.get('TRANSLATE_GUI_AUDIT')\n"
         "result={'translated':data.replace('Goedemorgen, dit is een testbericht.', 'GOEDEMORGEN, DIT IS EEN TESTBERICHT.')}\n"
         "if mode in ('error','fallback') and '--provider' in sys.argv: result={'error':'Google is rate-limiting translation (HTTP 429).'}\n"
@@ -43,7 +53,9 @@ def gui_driver(tmp_path_factory):
     return driver, modules, helper, schemas
 
 
-@pytest.mark.parametrize("mode", ["preview", "browser", "stale", "destroy", "error", "fallback", "settings"])
+@pytest.mark.parametrize("mode", ["preview", "browser", "stale", "destroy", "error", "fallback", "settings",
+                                  "dark", "styled", "declared", "cache", "shortcut", "browser-shortcut",
+                                  "toolbar", "browser-toolbar"])
 def test_real_evolution_actions(gui_driver, tmp_path, mode):
     driver, modules, helper, schemas = gui_driver
     runtime_context = tempfile.TemporaryDirectory(prefix="evolution-translate-test-",
@@ -70,16 +82,19 @@ def test_real_evolution_actions(gui_driver, tmp_path, mode):
             environment.pop("GSETTINGS_SCHEMA_DIR", None)
     # Preload only Evolution, never xvfb-run, the bus daemon or the user's session.
     environment.pop("LD_PRELOAD")
-    result = subprocess.run(["xvfb-run", "-a", "dbus-run-session", "--", "env",
-                             "LD_PRELOAD=" + str(driver), "evolution", "--offline"],
-                            env=environment, capture_output=True, text=True, timeout=75)
-    log = result.stdout + result.stderr
-    (tmp_path / "evolution.txt").write_text(log)
+    destination = None
+    log_path = tmp_path / "evolution.txt"
     if os.environ.get("TRANSLATE_GUI_EVIDENCE_DIR"):
         destination = Path(os.environ["TRANSLATE_GUI_EVIDENCE_DIR"])
         destination.mkdir(parents=True, exist_ok=True)
-        (destination / f"gui-{mode}.txt").write_text(log)
+        log_path = destination / f"gui-{mode}.txt"
+    with log_path.open("w") as output:
+        result = subprocess.run(["xvfb-run", "-a", "dbus-run-session", "--", "env",
+                                 "LD_PRELOAD=" + str(driver), "evolution", "--offline"],
+                                env=environment, stdout=output, stderr=subprocess.STDOUT, text=True, timeout=75)
+    log = log_path.read_text()
+    if destination:
         for screenshot in tmp_path.glob("*.png"):
             (destination / screenshot.name).write_bytes(screenshot.read_bytes())
     assert result.returncode == 0, log[-8000:]
-    assert f"GUI {mode}: PASS" in result.stdout, log[-8000:]
+    assert f"GUI {mode}: PASS" in log, log[-8000:]

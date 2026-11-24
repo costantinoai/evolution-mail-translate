@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* Modified by Andrea Costantino on 2026-11-24: shared Translate action setup. */
 /* m-utils.h
  * Simple UI manager utilities for enabling/disabling actions.
  * Supports both legacy GtkUIManager (Evolution < 3.56) and
@@ -16,6 +17,8 @@
 
 #ifdef HAVE_EUI_MANAGER
 
+void m_utils_configure_translate_action (EUIAction *action);
+
 /**
  * m_utils_enable_actions_by_name:
  * @ui_manager: The EUIManager containing the actions
@@ -31,6 +34,8 @@ void m_utils_enable_actions_by_name (EUIManager  *ui_manager,
                                       gboolean     enable);
 
 #else /* Legacy GtkUIManager API */
+
+void m_utils_configure_translate_action (GtkAction *action);
 
 /**
  * m_utils_enable_actions:

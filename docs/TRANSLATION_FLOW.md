@@ -1,7 +1,9 @@
 # Evolution Mail Translation Extension - Architecture Analysis
 
+> Historical implementation notes. Code excerpts and line numbers describe an earlier version; use the [Developer Guide](DEVELOPER_GUIDE.md) and [User Guide](USER_GUIDE.md) for current behavior, providers, setup and tests.
+
 ## Overview
-The Evolution Mail Translation Extension is a GNOME Evolution plugin that provides offline, privacy-preserving email translation using ArgosTranslate. All processing happens locally with zero data transmission.
+The extension translates email bodies using local Argos models or online providers. Argos keeps message text local; online providers send body text to the selected service.
 
 ---
 
@@ -516,6 +518,6 @@ The Evolution Mail Translation Extension uses a clean, layered architecture with
 2. **Extensible Design**: Provider pattern allows multiple backends
 3. **Async-First**: Non-blocking operations throughout
 4. **Configuration-Driven**: GSettings for user preferences
-5. **Privacy-Focused**: All processing offline, no external APIs
+5. **Provider privacy**: Argos runs locally; online providers receive body text.
 6. **Currently Single-Provider**: Argos is the hardcoded default, but architecture supports multiple providers
 

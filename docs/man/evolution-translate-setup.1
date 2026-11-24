@@ -1,8 +1,11 @@
-.TH evolution-translate-setup 1 "November 2025" "evolution-translate-extension" "User Commands"
+.TH evolution-translate-setup 1 "November 2026" "evolution-translate-extension" "User Commands"
 .SH NAME
 evolution-translate-setup \- set up a per-user Python environment for Evolution Translate
 .SH SYNOPSIS
 .B evolution-translate-setup
+[
+.B --online-only
+]
 [
 .B --models
 |
@@ -20,12 +23,19 @@ and is auto-detected by the extension.
 This command does not require root and is intended to be run by each user who wants to use the extension.
 .SH OPTIONS
 .TP
+.B --online-only
+Install online-provider dependencies without the Argos engine or models.
+Cannot be combined with --models.
+.TP
 .B --models
 Install a default set of Argos Translate models after creating/updating the virtual environment.
 .TP
 .B --no-models
 Do not install Argos Translate models.
 .SH ENVIRONMENT
+.PP
+The setup command uses the system python3 to create the default environment.
+The following variable controls the extension's translation helper, not setup:
 .TP
 .B TRANSLATE_PYTHON_BIN
 Path to a Python interpreter to use for running the translation backend. If unset, the tool and extension

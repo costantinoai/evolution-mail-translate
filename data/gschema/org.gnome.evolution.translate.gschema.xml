@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Shortcut setting adapted from MoDD0/moddo-evolution-translator commit
+     6865134515f7e52458eadfc62b30cb94f867f404, under LGPL-2.1-or-later.
+     Modified by Andrea Costantino on 2026-11-24. -->
 <schemalist>
   <schema id="org.gnome.evolution.translate" path="/org/gnome/evolution/translate/">
     <key name="target-language" type="s">
@@ -15,6 +18,11 @@
       <default>true</default>
       <summary>Preserve message formatting</summary>
       <description>Whether to attempt HTML-structure preserving translation.</description>
+    </key>
+    <key name="translate-shortcut" type="s">
+      <default>'&lt;Control&gt;&lt;Shift&gt;T'</default>
+      <summary>Keyboard shortcut for Translate Message</summary>
+      <description>Shortcut shared by the mail preview and separate message windows. An empty value disables it.</description>
     </key>
   </schema>
 

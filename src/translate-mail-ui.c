@@ -1,4 +1,8 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
+/* UI integration adapted from MoDD0/moddo-evolution-translator, commits
+ * 967149e205bcb1632571595846029d3834f17314 and
+ * 6865134515f7e52458eadfc62b30cb94f867f404 (LGPL-2.1-or-later).
+ * Modified by Andrea Costantino on 2026-11-24. */
 /**
  * translate-mail-ui.c
  * Adds translation actions to the Message menu in Mail view.
@@ -100,8 +104,11 @@ action_translate_settings_cb (EUIAction *action,
 }
 
 static const EUIActionEntry translate_entries[] = {
+    { "translate-menu",
+      NULL, N_("_Translate"), NULL, NULL,
+      NULL, NULL, NULL, NULL },
     { "translate-message-action",
-      NULL, N_("_Translate Message"), "<Control><Shift>T",
+      NULL, N_("_Translate Message"), NULL,
       N_("Translate the selected message"),
       action_translate_message_cb, NULL, NULL, NULL },
     { "translate-show-original-action",
@@ -154,35 +161,33 @@ translate_mail_ui_init (EShellView *shell_view)
     const gchar *eui_def =
         "<eui>"
         "  <menu id='main-menu'>"
-        "    <submenu id='translate-menu' after='custom-rules-actions'>"
-        "      <attribute name='label' translatable='yes'>_Translate</attribute>"
-        "      <item action='" TRANSLATE_ACTION_GROUP ".translate-message-action'/>"
-        "      <item action='" TRANSLATE_ACTION_GROUP ".translate-show-original-action'/>"
-        "      <separator/>"
-        "      <item action='" TRANSLATE_ACTION_GROUP ".translate-settings-action'/>"
-        "    </submenu>"
+        "    <placeholder id='custom-menus'>"
+        "      <submenu action='translate-menu'>"
+        "        <item action='translate-message-action'/>"
+        "        <item action='translate-show-original-action'/>"
+        "        <separator/>"
+        "        <item action='translate-settings-action'/>"
+        "      </submenu>"
+        "    </placeholder>"
         "  </menu>"
+        "  <toolbar id='mail-preview-toolbar'>"
+        "    <placeholder id='mail-toolbar-common'>"
+        "      <item action='translate-message-action'/>"
+        "    </placeholder>"
+        "  </toolbar>"
         "</eui>";
 
     g_return_if_fail (E_IS_SHELL_VIEW (shell_view));
 
     EUIManager *ui_manager = e_shell_view_get_ui_manager (shell_view);
-    GError *error = NULL;
-
     e_ui_manager_add_actions_with_eui_data (
         ui_manager,
         TRANSLATE_ACTION_GROUP,
         GETTEXT_PACKAGE,
         translate_entries, G_N_ELEMENTS (translate_entries),
-        "translate-mail-ui",
-        eui_def, -1,
-        shell_view, &error);
-
-    if (error) {
-        g_warning ("[translate] Failed to add UI: %s", error->message);
-        g_error_free (error);
-        return;
-    }
+        shell_view,
+        eui_def);
+    m_utils_configure_translate_action (e_ui_manager_get_action (ui_manager, "translate-message-action"));
 
     g_signal_connect (shell_view, "update-actions",
                       G_CALLBACK (translate_mail_ui_update_actions_cb), NULL);
@@ -228,9 +233,9 @@ static const GtkActionEntry translate_menu_action[] = {
 
 static const GtkActionEntry translate_message_menu_entries[] = {
     { "translate-message-action",
-      GTK_STOCK_ADD,
+      NULL,
       N_("_Translate Message"),
-      "<Control><Shift>T",
+      NULL,
       N_("Translate the selected message"),
       G_CALLBACK (action_translate_message_cb) }
 };
@@ -303,8 +308,8 @@ translate_mail_ui_init (EShellView *shell_view)
         "      <menuitem action='translate-settings-action'/>"
         "    </menu>"
         "  </menubar>"
-        "  <toolbar name='mail-toolbar'>"
-        "    <placeholder name='mail-toolbar-actions'>"
+        "  <toolbar name='main-toolbar'>"
+        "    <placeholder name='mail-toolbar-common'>"
         "      <toolitem action='translate-message-action'/>"
         "    </placeholder>"
         "  </toolbar>"
@@ -335,6 +340,7 @@ translate_mail_ui_init (EShellView *shell_view)
                                   G_N_ELEMENTS (translate_settings_entries),
                                   shell_view);
     gtk_ui_manager_insert_action_group (ui_manager, group, 0);
+    m_utils_configure_translate_action (gtk_action_group_get_action (group, "translate-message-action"));
     g_object_unref (group);
 
     GError *error = NULL;

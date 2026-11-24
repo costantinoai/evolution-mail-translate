@@ -10,6 +10,32 @@ to avoid code duplication across translation scripts.
 import os
 import sys
 
+# Compute-type validation adapted from MoDD0/moddo-evolution-translator,
+# commit 1aa8000b7116aaafcf31d21c418ddc8e4e61d596, under LGPL-2.1-or-later.
+# Modified by Andrea Costantino on 2026-11-24.
+_VALID_COMPUTE_TYPES = frozenset({
+    "default", "auto", "int8", "int8_float32", "int8_float16",
+    "int16", "float16", "bfloat16", "float32",
+})
+
+
+def setup_compute_type(debug_log_func=None):
+    """Validate the optional compute type before importing Argos settings."""
+    requested = os.environ.get("ARGOS_COMPUTE_TYPE")
+    if not requested:
+        os.environ.pop("ARGOS_COMPUTE_TYPE", None)
+        return None
+    if requested not in _VALID_COMPUTE_TYPES:
+        os.environ.pop("ARGOS_COMPUTE_TYPE", None)
+        message = "[translate] Invalid ARGOS_COMPUTE_TYPE; using the Argos default."
+        print(message, file=sys.stderr)
+        if debug_log_func:
+            debug_log_func(message)
+        return None
+    if debug_log_func:
+        debug_log_func(f"Compute type: {requested}")
+    return requested
+
 
 def setup_gpu_acceleration(debug_log_func=None):
     """

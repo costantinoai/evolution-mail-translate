@@ -1,5 +1,7 @@
 # Evolution Mail Translation Extension - Complete Analysis
 
+> Historical implementation notes. Code excerpts and line numbers describe an earlier version; use the [Developer Guide](DEVELOPER_GUIDE.md) and [User Guide](USER_GUIDE.md) for current behavior, providers, setup and tests.
+
 ## Documentation Index
 
 This comprehensive analysis covers all aspects of the translation implementation in the Evolution Mail Translation Extension. Three detailed documents have been created:
@@ -348,7 +350,7 @@ export TRANSLATE_PYTHON_BIN=/path/to/python3
 - Clean layered design
 - Non-blocking async operations
 - Extensible provider pattern
-- Privacy-first (100% offline)
+- Argos processes text locally; online providers receive body text.
 - HTML structure preservation
 - GSettings-based configuration
 

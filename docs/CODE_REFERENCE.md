@@ -1,5 +1,7 @@
 # Quick Reference - Translation Implementation Locations
 
+> Historical implementation notes. Code excerpts and line numbers describe an earlier version; use the [Developer Guide](DEVELOPER_GUIDE.md) and [User Guide](USER_GUIDE.md) for current behavior, providers, setup and tests.
+
 ## IMMEDIATE ACCESS: KEY CODE SECTIONS
 
 ### 1. TRANSLATION ENTRY POINT (User clicks "Translate")
@@ -323,7 +325,7 @@ Provides GUI for:
    - Maintains all tags, attributes, comments
    - Best-effort structure preservation
 
-5. **No External APIs**: All translation is offline
+5. **Provider privacy**: Argos translates locally; online providers receive message body text.
    - Models downloaded locally
    - GPU acceleration optional (CUDA)
    - Zero data transmission

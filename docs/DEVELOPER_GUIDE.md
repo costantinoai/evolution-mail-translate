@@ -1,204 +1,79 @@
 # Developer Guide
 
-This guide outlines development setup, build/package steps, contribution guidelines, and how to report issues.
+## Build and install
 
-## Development Setup
-
-- Dependencies (Ubuntu/Debian):
-  - `cmake`, `pkg-config`
-  - `glib2.0-dev`, `libjson-glib-dev`
-  - `evolution-dev`, `evolution-data-server-dev`
-  - `python3`, `python3-venv`, `python3-pip` (for helper tools)
+The source requires Evolution 3.52+ and matching development packages. CMake chooses GtkUIManager below 3.56 and EUIManager from 3.56 onward.
 
 ```bash
-sudo apt install cmake pkg-config glib2.0-dev libjson-glib-dev \
-  evolution-dev evolution-data-server-dev python3 python3-venv python3-pip
+sudo apt install build-essential cmake pkg-config libglib2.0-dev libjson-glib-dev libxml2-dev \
+  evolution-dev evolution-data-server-dev libebook1.2-dev python3-venv
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr \
+  -DCMAKE_C_FLAGS="-Wall -Wextra -Werror"
+cmake --build build -j2
 ```
 
-## Build From Source
+Use `./scripts/install-from-source.sh` to install, then run `evolution-translate-setup` as the ordinary user. Close and reopen Evolution to load the module. `./scripts/uninstall.sh` removes files recorded by the source installation.
+
+## Tests
+
+Tests are tracked in `tests/`. The GUI tests launch the real Evolution executable on private Xvfb displays with isolated XDG directories, a memory settings backend and synthetic local messages. They do not use the current desktop's mail session.
 
 ```bash
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug
-cmake --build . -j
-sudo cmake --install .
-
-# Restart Evolution
-killall evolution 2>/dev/null || true
-evolution &
+sudo apt install xvfb libxtst6 dbus-x11
+python3 -m venv .venv
+.venv/bin/python -m pip install pytest ruff==0.15.1 -r requirements-online.txt
+.venv/bin/ruff check tools/translate tests
+for script in scripts/*.sh; do bash -n "$script"; done
+.venv/bin/python -m pytest -q -p no:cacheprovider tests
 ```
 
-Helpers are installed to `/usr/share/evolution-translate/translate/`. Per‑user Python env and models are prepared with `evolution-translate-setup`.
+The GUI harness needs an owned, mode-0700 `/run/user/$(id -u)` directory, normally supplied by a login session. In CI or a container, create it explicitly. XTEST supplies real keyboard events only inside each test's private display.
 
-## Testing
+For another build directory, set both `TRANSLATE_TEST_MODULE` to its `src/libtranslate-module.so` and `TRANSLATE_TEST_BUILD` to the build directory. `TRANSLATE_GUI_EVIDENCE_DIR` saves the GUI logs and screenshots. A private test can use installed Argos models with `TRANSLATE_GUI_USE_MODELS=1`; this requires the default per-user Argos environment and a Dutch-to-English model.
 
-### Local Testing
+### Optional online smoke checks
 
-- Standard tests: `tests/run-tests.sh --standard`
-- Docker tests (local, test-only): see `tests/docker/`
-  - Self-contained: `tests/docker/run-all-images.sh` (Ubuntu 24.04)
-  - Base images: `tests/docker/build-and-test.sh` (Ubuntu 24.04)
-
-**Note:** The `tests/` folder is gitignored and not tracked in the repository; it exists purely for local validation and experimentation.
-
-### Continuous Integration
-
-The CI workflow runs on every push and pull request with a two-stage approach:
-
-1. **Quick Check Stage** (fails fast on critical issues, ~2-3 minutes):
-   - Bash syntax validation (blocking)
-   - Basic compilation check with warnings as errors (blocking)
-   - Python linting (informational only - not blocking)
-
-2. **Full Build Stage** (only runs if quick-check passes, ~5-7 minutes):
-   - Complete build with all compiler warnings enabled (blocking)
-   - C static analysis (informational only)
-   - Python unit tests (blocking)
-   - Debian package generation (blocking)
-   - Lintian package validation (blocking)
-
-**CI Philosophy:**
-- **Blocking checks**: Bash syntax, compilation, tests, package validity
-- **Informational checks**: Code formatting, linting, static analysis
-- **Developer responsibility**: Run linting locally before pushing (via tests/ workflows)
-- **CI focus**: Does it build? Do tests pass? Is the package valid?
-
-**Before pushing**, run local checks:
-```bash
-# Format Python code
-python3 -m black tools/translate
-
-# Check linting
-python3 -m flake8 tools/translate
-
-# Run tests (if tests/ is set up locally)
-./tests/run-tests.sh --quick
-```
-
-## Building Packages for Release
-
-It’s acceptable to build `.deb` packages inside Docker as long as you use a clean base image matching the target distro (e.g., Ubuntu 24.04) and a reproducible process. Many projects follow this pattern. For Debian-style workflows, you can also use `sbuild`/`pbuilder` or a CI-based build.
-
-Signing is separate from building: produce unsigned packages in containers, then sign artifacts on your release machine or in CI.
-
-## Packaging (Debian)
+Normal tests simulate provider responses and skip the two live checks. To send a fixed synthetic French sentence to MyMemory and LibreTranslate:
 
 ```bash
-dpkg-buildpackage -us -uc -b
-ls -l ../*.deb
+TRANSLATE_LIVE_PROVIDERS=1 .venv/bin/python -m pytest -q tests/test_live_providers.py
 ```
 
-## Release Process
+Use `-k mymemory` or `-k libre` to check one service. LibreTranslate uses `LIBRE_TRANSLATE_URL` and an optional `LIBRE_API_KEY` from the process environment; the tests never add credentials to command arguments. Service quotas, authentication and outages can fail these checks independently of the local regression suite. Do not use real email text for smoke checks.
 
-Releases are **fully automated** using GitHub Actions. When you push a tag matching `vX.Y` (e.g., `v1.1`, `v1.2`), the release workflow automatically builds packages and publishes them. Patch tags like `v1.1.1` are ignored.
+The helper uses the test interpreter by default. Set `TRANSLATE_PYTHON_BIN` to test an existing translation environment without installing pytest into it.
 
-### Automated Release Script (Recommended)
+## Continuous integration and packaging
 
-Use the automated release preparation script to handle the entire process:
+CI runs the same job on Ubuntu 24.04 and 26.04 to cover both Evolution UI APIs. Shell syntax, pinned Ruff, warning-as-error compilation, tests, Debian packaging and Lintian errors are blocking. Live provider checks remain opt-in.
 
 ```bash
-./scripts/prepare-release.sh 1.2.0
+sudo apt install debhelper devscripts lintian chrpath
+./scripts/build-deb.sh
 ```
 
-This script will:
-1. Validate the version format
-2. Update `CMakeLists.txt` version
-3. Update `debian/changelog` with proper formatting
-4. Validate version consistency across files
-5. Commit changes with conventional commit message
-6. Create annotated git tag (`v1.2`)
-7. Push to remote, triggering the automated release workflow
+The build script snapshots tracked and non-ignored source files into a unique directory under `build/debian/`, builds there and copies artifacts into `packages/`. Private task ledgers are excluded. The distributed binary targets Ubuntu 24.04; build from source against other Evolution versions.
 
-**Options:**
-- `--dry-run`: Preview changes without applying them
-- `--no-push`: Create tag locally but don't push (manual control)
-- `--help`: Show detailed usage information
+## Release
 
-**Example:**
+`debian/changelog` is the version source. Commit the tested source changes first, then preview the release:
+
 ```bash
-# Preview what will happen
-./scripts/prepare-release.sh 1.2.0 --dry-run
-
-# Create release (after testing locally)
-./scripts/prepare-release.sh 1.2.0
+./scripts/prepare-release.sh 1.2.2 --dry-run
+./scripts/prepare-release.sh 1.2.2 --no-push
 ```
 
-### Manual Release Process
+Preparation requires a clean tree. It creates the `1.2.2-1` changelog entry, a release commit and the exact annotated tag `v1.2.2`. It does not publish by default. Verify the final version and checks before pushing:
 
-If you prefer manual control, follow these steps:
+```bash
+git push origin HEAD
+git push origin refs/tags/v1.2.2
+```
 
-1. **Update version files:**
-   ```bash
-   # Update CMakeLists.txt
-   sed -i 's/set(VERSION ".*")/set(VERSION "1.2.0")/' CMakeLists.txt
+Alternatively, `--push` publishes immediately after preparation; use it only when publication is authorized. The tag workflow runs the complete CI matrix, builds the Ubuntu 24.04 package and source archive, checks package quality and publishes both artifacts with SHA256 files. Confirm the remote tag, workflow results, downloadable assets and checksums before treating the release as complete.
 
-   # Update debian/changelog
-   dch -v 1.2.0-1 "Release version 1.2.0"
-   ```
+## Licensing and contributions
 
-2. **Commit changes:**
-   ```bash
-   git add CMakeLists.txt debian/changelog
-   git commit -m "chore: release version 1.2.0"
-   ```
+Use `SPDX-License-Identifier: LGPL-2.1-or-later` on new source files. Preserve existing copyright notices, record the source of adapted code and add dated modification notices. The 2026-11-24 license correction restores the complete LGPL 2.1 document, including section 5, from Debian's `/usr/share/common-licenses/LGPL-2.1`; it does not change the project's LGPL-2.1-or-later declaration.
 
-3. **Create and push tag:**
-   ```bash
-   git tag -a v1.2 -m "Release 1.2.0"
-   git push origin main v1.2
-   ```
-
-### What Happens Automatically
-
-Once you push the tag, GitHub Actions will:
-
-1. **Build on clean Ubuntu 24.04 environment**
-   - Ensures reproducible builds
-   - All dependencies installed fresh
-
-2. **Generate release artifacts:**
-   - Debian package (`.deb`) for amd64
-   - Source tarball (`.tar.xz`) via CMake dist target
-   - SHA256 checksums for both artifacts
-
-3. **Validate package quality:**
-   - Lintian checks (Debian policy compliance)
-   - Errors are fatal (build fails if package is malformed)
-
-4. **Create GitHub Release:**
-   - Release name: `evolution-translate-extension X.Y.Z-1 (amd64)`
-   - Includes installation instructions
-   - Attaches all artifacts
-   - Links to documentation
-
-5. **Monitor the release:**
-   - View workflow progress: https://github.com/costantinoai/evolution-mail-translate/actions
-   - Access release when complete: https://github.com/costantinoai/evolution-mail-translate/releases
-
-### Supported Platforms
-
-- **Official release target:** Ubuntu 24.04 LTS (Evolution 3.52+)
-- **From source:** Any Linux distribution with Evolution 3.52+ and build dependencies
-
-**Note:** Ubuntu 22.04 has older Evolution headers and is not officially supported. Users on 22.04 should build from source or upgrade to 24.04.
-
-## Contributing
-
-- Follow GNOME C coding style; tabs width 8; max line length ~120.
-- Use SPDX headers on new files: `SPDX-License-Identifier: LGPL-2.1-or-later`.
-- Keep changes minimal and focused; prefer DRY and clear module ownership.
-- Add/update docs when changing user-observable behavior.
-
-### Development
-
-- Build: `cmake -S . -B build && cmake --build build -j`
-- Install from source: `./scripts/install-from-source.sh`
-- User setup (Python deps/models): `evolution-translate-setup`
-
-### Reporting Issues
-
-Please include:
-- Evolution version and distro
-- Steps to reproduce
-- Logs with `G_MESSAGES_DEBUG=all`
-- If translation-related: input sample and target language
+Follow [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports should include the distribution, Evolution version, selected provider, steps to reproduce and sanitized errors. Use synthetic examples rather than private messages or credentials.

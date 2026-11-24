@@ -1,21 +1,23 @@
 # Evolution Mail Translation Extension - Comprehensive Architecture
 
+> Historical implementation notes. Code excerpts and line numbers describe an earlier version; use the [Developer Guide](DEVELOPER_GUIDE.md) and [User Guide](USER_GUIDE.md) for current behavior, providers, setup and tests.
+
 **Created:** 2025-11-06
 **Scope:** Complete analysis of translation implementation, providers, config, flow
 
 ## Executive Summary
 
 The Evolution Mail Translation Extension is a GNOME Evolution plugin providing
-offline email translation using ArgosTranslate. The architecture uses a clean
+email translation using local Argos models or online providers. The architecture uses a clean
 provider pattern with C/GObject for Evolution integration and Python for
 translation logic via subprocess communication.
 
 KEY CHARACTERISTICS:
-- Privacy-first: 100% offline, no external APIs
+- Privacy depends on the provider: Argos is local; online providers receive body text.
 - Extensible: Provider interface supports multiple backends
 - Async-first: Non-blocking operations throughout
 - Configuration-driven: GSettings for user preferences
-- Currently hardcoded to "argos" provider (only one registered)
+- Current provider selection is configurable; the diagrams below describe the earlier Argos route.
 
 ================================================================================
 1. TRANSLATION FLOW SUMMARY
@@ -447,7 +449,7 @@ OPTIONAL:
   - CUDA/cuDNN (GPU acceleration)
 
 BUILD TOOLS:
-  - CMake 3.10+
+  - CMake 3.15+
   - pkg-config
   - C compiler (gcc/clang)
   - Python 3.8+
@@ -648,7 +650,7 @@ The Evolution Mail Translation Extension is a well-architected system with:
 ✓ Extensible design: Provider pattern supports multiple backends
 ✓ Async-first: Non-blocking operations throughout
 ✓ Configuration-driven: GSettings for persistent user preferences
-✓ Privacy-focused: 100% offline, no external APIs
+✓ Argos processes text locally; online providers send body text to their service.
 ✓ Structured communication: JSON for subprocess IPC
 ✓ HTML-aware: BeautifulSoup preserves message structure
 

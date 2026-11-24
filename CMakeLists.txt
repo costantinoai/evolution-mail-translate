@@ -1,4 +1,5 @@
 # Evolution Translate Extension build script
+# Modified by Andrea Costantino on 2026-11-24: declare the direct libxml2 dependency.
 
 cmake_minimum_required(VERSION 3.15)
 cmake_policy(VERSION 3.15)
@@ -56,7 +57,7 @@ pkg_check_modules(EVOLUTION_SHELL REQUIRED evolution-shell-3.0>=${REQUIRE_EVOLUT
 pkg_check_modules(EVOLUTION REQUIRED IMPORTED_TARGET
     evolution-mail-3.0>=${REQUIRE_EVOLUTION_VERSION}
     evolution-shell-3.0>=${REQUIRE_EVOLUTION_VERSION}
-    json-glib-1.0)
+    json-glib-1.0 libxml-2.0)
 # Evolution's pkg-config files explicitly inject -Wl,-R paths. The host already
 # loads its private libraries; retain other link options without embedding paths.
 get_target_property(EVOLUTION_LINK_OPTIONS PkgConfig::EVOLUTION INTERFACE_LINK_OPTIONS)
