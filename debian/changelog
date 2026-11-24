@@ -1,3 +1,9 @@
+evolution-translate-extension (1.2.1-1) unstable; urgency=medium
+
+  * Release version 1.2.1
+
+ -- Andrea Costantino <andreaivancostantino@outlook.it>  Tue, 24 Nov 2026 18:19:34 +0100
+
 evolution-translate-extension (1.0.0-1) unstable; urgency=medium
 
   * Initial release
