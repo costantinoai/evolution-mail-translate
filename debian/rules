@@ -11,28 +11,7 @@ export DEB_CFLAGS_MAINT_APPEND  = -Wall
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DFORCE_INSTALL_PREFIX=OFF
-
-override_dh_auto_install:
-	dh_auto_install
-	# Remove RPATH/RUNPATH from the installed module to satisfy lintian
-	if [ -x /usr/bin/chrpath ]; then \
-	  mod="debian/evolution-translate-extension/usr/lib/evolution/modules/libtranslate-module.so"; \
-	  if [ -f "$mod" ]; then chrpath -d "$mod" || true; fi; \
-	fi
-	# Ensure the shared object is stripped (dh_strip will also run later)
-	if [ -x /usr/bin/strip ]; then \
-	  mod="debian/evolution-translate-extension/usr/lib/evolution/modules/libtranslate-module.so"; \
-	  if [ -f "$mod" ]; then strip --strip-unneeded "$mod" || true; fi; \
-	fi
-
-override_dh_install:
-	dh_install
-	# GSettings schemas directory will be created automatically when installing files
-
-override_dh_installchangelogs:
-	dh_installchangelogs
+		-DCMAKE_INSTALL_PREFIX=/usr
 
 # Help dpkg-shlibdeps find Evolution libraries
 override_dh_shlibdeps:

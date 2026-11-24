@@ -57,6 +57,20 @@ void      translate_provider_register      (GType provider_type);
 GObject*  translate_provider_new_by_id     (const gchar *id);
 gchar**   translate_provider_list_ids      (void); /* NULL-terminated list, free with g_strfreev */
 
+/* Shared subprocess implementation used by each registered provider. */
+void translate_provider_helper_async (gpointer self,
+                                      const gchar *input,
+                                      gboolean is_html,
+                                      const gchar *source_lang_opt,
+                                      const gchar *target_lang,
+                                      GCancellable *cancellable,
+                                      GAsyncReadyCallback callback,
+                                      gpointer user_data);
+gboolean translate_provider_helper_finish (gpointer self,
+                                           GAsyncResult *result,
+                                           gchar **out_translated_html,
+                                           GError **error);
+
 G_END_DECLS
 
 #endif /* TRANSLATE_PROVIDER_H */

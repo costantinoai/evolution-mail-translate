@@ -36,6 +36,9 @@ find_body_parts (CamelMimePart *part,
                  CamelMimePart **best_plain,
                  const CamelContentType *parent_ct)
 {
+    if (is_attachment (part, parent_ct))
+        return;
+
     CamelDataWrapper *dw = camel_medium_get_content (CAMEL_MEDIUM (part));
     if (CAMEL_IS_MULTIPART (dw)) {
         CamelMultipart *mp = (CamelMultipart*)dw;
@@ -47,9 +50,6 @@ find_body_parts (CamelMimePart *part,
         }
         return;
     }
-
-    if (is_attachment (part, parent_ct))
-        return;
 
     if (content_type_is (part, "text", "html")) {
         if (!*best_html)
@@ -69,6 +69,7 @@ decode_part_to_utf8 (CamelMimePart *part)
     CamelDataWrapper *dw = camel_medium_get_content (CAMEL_MEDIUM (part));
     g_autoptr(CamelStreamMem) mem = (CamelStreamMem*)camel_stream_mem_new ();
     g_autoptr(GError) error = NULL;
+    if (!dw) return NULL;
     camel_data_wrapper_decode_to_stream_sync (dw, (CamelStream*)mem, NULL, &error);
     if (error) return NULL;
     GByteArray *arr = camel_stream_mem_get_byte_array (mem);
@@ -82,6 +83,8 @@ decode_part_to_utf8 (CamelMimePart *part)
         if (out)
             return out;
     }
+    if (!g_utf8_validate ((const gchar *) arr->data, arr->len, NULL))
+        return g_utf8_make_valid ((const gchar *) arr->data, arr->len);
     return g_strndup ((const gchar*)arr->data, arr->len);
 }
 
@@ -101,33 +104,14 @@ plain_to_html (const gchar *text)
 gchar *
 translate_get_selected_message_body_html_from_reader (EMailReader *reader)
 {
-    g_autoptr(CamelFolder) folder = NULL;
-    const gchar *uid = NULL;
-
     g_return_val_if_fail (E_IS_MAIL_READER (reader), NULL);
-
-    /* Get the message UID from the DISPLAY's part list, not the selection model.
-     * This ensures consistency with translate-dom.c's state management, which
-     * also uses the display's part list to track original content.
-     * Fixes Issue #5: wrong original content restored when switching messages. */
     EMailDisplay *display = e_mail_reader_get_mail_display (reader);
     if (!display)
         return NULL;
-
     EMailPartList *part_list = e_mail_display_get_part_list (display);
     if (!part_list)
         return NULL;
-
-    uid = e_mail_part_list_get_message_uid (part_list);
-    if (!uid)
-        return NULL;
-
-    folder = e_mail_reader_ref_folder (reader);
-    if (!folder)
-        return NULL;
-
-    g_autoptr(GError) error = NULL;
-    CamelMimeMessage *msg = camel_folder_get_message_sync (folder, uid, NULL, &error);
+    CamelMimeMessage *msg = e_mail_part_list_get_message (part_list);
     if (!msg)
         return NULL;
 
@@ -144,16 +128,25 @@ translate_get_selected_message_body_html_from_reader (EMailReader *reader)
     return NULL;
 }
 
+EMailReader *
+translate_ref_reader_from_shell_view (EShellView *shell_view)
+{
+    g_return_val_if_fail (E_IS_SHELL_VIEW (shell_view), NULL);
+    EShellContent *content = e_shell_view_get_shell_content (shell_view);
+    EMailView *view = NULL;
+    g_object_get (content, "mail-view", &view, NULL);
+    if (view && !E_IS_MAIL_READER (view))
+        g_clear_object (&view);
+    return view ? E_MAIL_READER (view) : NULL;
+}
+
 gchar *
 translate_get_selected_message_body_html_from_shell_view (EShellView *shell_view)
 {
-    EShellContent *shell_content;
-    EMailView *mail_view = NULL;
-    shell_content = e_shell_view_get_shell_content (shell_view);
-    g_object_get (shell_content, "mail-view", &mail_view, NULL);
-    if (!mail_view)
+    EMailReader *reader = translate_ref_reader_from_shell_view (shell_view);
+    if (!reader)
         return NULL;
-    gchar *html = translate_get_selected_message_body_html_from_reader (E_MAIL_READER (mail_view));
-    g_object_unref (mail_view);
+    gchar *html = translate_get_selected_message_body_html_from_reader (reader);
+    g_object_unref (reader);
     return html;
 }

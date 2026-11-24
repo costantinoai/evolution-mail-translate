@@ -10,7 +10,6 @@ BUILD_DIR="$PROJECT_ROOT/build"
 
 # System locations (Evolution only loads modules from /usr/lib*/evolution/modules/)
 INSTALL_PREFIX="/usr"
-SYSTEM_TRANSLATE_SHARE="/usr/share/evolution-translate"
 
 # Color output
 RED='\033[0;31m'
@@ -54,22 +53,20 @@ cmake -DCMAKE_BUILD_TYPE=Debug \
       -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
       ..
 
-make -j$(nproc)
+cmake --build "$BUILD_DIR" --parallel 2
 print_status "Build completed"
 
 echo ""
 echo "Installing extension to /usr (requires sudo)..."
-sudo make install
+sudo cmake --install "$BUILD_DIR"
 
-# Fix permissions on Python tools directory so regular users can read it
-sudo chmod -R 755 "$SYSTEM_TRANSLATE_SHARE" 2>/dev/null || true
 print_status "Extension installed to /usr/lib*/evolution/modules/"
 
 echo ""
 echo "Compiling GSettings schemas (requires sudo)..."
 # IMPORTANT: Use umask 0022 to ensure schemas are world-readable (644)
 # Without this, restrictive root umask may create 640 files that users can't read
-sudo sh -c 'umask 0022 && glib-compile-schemas /usr/share/glib-2.0/schemas' 2>/dev/null || true
+sudo sh -c 'umask 0022 && glib-compile-schemas /usr/share/glib-2.0/schemas'
 print_status "GSettings schemas compiled"
 
 echo ""
@@ -85,10 +82,10 @@ echo "  2. The extension will load automatically"
 echo ""
 echo "  3. To use the extension:"
 echo "     - Select an email message"
-echo "     - Press Ctrl+Shift+T or go to Tools → Translate Message"
+echo "     - Press Ctrl+Shift+T or go to Translate → Translate Message"
 echo ""
 echo "  4. Configure settings:"
-echo "     - Go to Edit → Preferences → Translate Settings"
+echo "     - Go to Translate → Translate Settings"
 echo ""
 echo "Set up Python dependencies and models (per user):"
 echo "  evolution-translate-setup"

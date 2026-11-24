@@ -5,7 +5,6 @@ Installs default translation models for common languages to English.
 Supports: Dutch (nl), Spanish (es), French (fr), German (de), Italian (it), Portuguese (pt), and more.
 """
 
-import os
 import sys
 
 # Import shared GPU utilities
@@ -48,6 +47,7 @@ def install_default_models():
 
     available_packages = pkg.get_available_packages()
     installed_count = 0
+    failures = 0
 
     for from_code, to_code, language_name in default_languages:
         print(f"\n[{language_name}] Checking {from_code} → {to_code}...")
@@ -55,7 +55,7 @@ def install_default_models():
         # Check if already installed
         installed = pkg.get_installed_packages()
         if any(p.from_code == from_code and p.to_code == to_code for p in installed):
-            print(f"  ✓ Already installed")
+            print("  ✓ Already installed")
             continue
 
         # Find and install the package
@@ -63,24 +63,26 @@ def install_default_models():
         for p in available_packages:
             if p.type == "translate" and p.from_code == from_code and p.to_code == to_code:
                 found = True
-                print(f"  Downloading...")
+                print("  Downloading...")
                 try:
                     download_path = p.download()
-                    print(f"  Installing...")
+                    print("  Installing...")
                     pkg.install_from_path(download_path)
                     print(f"  ✓ Successfully installed {from_code} → {to_code}")
                     installed_count += 1
                 except Exception as e:
                     print(f"  ✗ Failed to install: {e}")
+                    failures += 1
                 break
 
         if not found:
-            print(f"  ✗ Package not found in repository")
+            print("  ✗ Package not found in repository")
+            failures += 1
 
     print(f"\n{'='*60}")
     print(f"Installation complete! Installed {installed_count} new models.")
     print(f"{'='*60}")
-    return 0
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":

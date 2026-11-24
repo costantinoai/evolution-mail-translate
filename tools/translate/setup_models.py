@@ -13,7 +13,7 @@ def list_available():
         pkg.update_package_index()
         for p in pkg.get_available_packages():
             if p.type == "translate":
-                print(f"{p.from_code}->{p.to_code}: {p.link}")
+                print(f"{p.from_code}->{p.to_code}: {', '.join(p.links)}")
     except Exception as e:
         print(f"Error: {e}. Did you install 'argostranslate'?", file=sys.stderr)
         return 1

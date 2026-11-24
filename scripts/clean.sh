@@ -1,26 +1,18 @@
 #!/usr/bin/env bash
-# Clean local build artifacts and Python caches. Leaves virtualenvs intact.
+# Preview scoped build/cache cleanup; deletion requires --apply.
 set -euo pipefail
-
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-echo "Cleaning build artifacts and Python caches under: $ROOT_DIR"
-
-# Remove CMake build directories
-if [ -d "$ROOT_DIR/build" ]; then
-  echo "- Removing build/"
-  rm -rf "$ROOT_DIR/build"
-fi
-
-if [ -d "$ROOT_DIR/_build" ]; then
-  echo "- Removing _build/"
-  rm -rf "$ROOT_DIR/_build"
-fi
-
-# Remove Python caches
-echo "- Removing __pycache__ and *.pyc"
-find "$ROOT_DIR" -type d -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null || true
-find "$ROOT_DIR" -type f -name '*.pyc' -delete 2>/dev/null || true
-
-echo "Done."
-
+APPLY=false
+case "${1:---dry-run}" in
+  --apply) APPLY=true ;;
+  --dry-run) ;;
+  *) echo "Usage: clean.sh [--dry-run|--apply]" >&2; exit 2 ;;
+esac
+if (( $# > 1 )); then echo "Only one option is allowed." >&2; exit 2; fi
+for name in build _build tools/translate/__pycache__ tests/__pycache__; do
+  target="$ROOT_DIR/$name"
+  if [[ -d "$target" && ! -L "$target" ]]; then
+    printf '%s: %s\n' "$(if "$APPLY"; then echo Removing; else echo Would-remove; fi)" "$target"
+    if "$APPLY"; then rm -rf -- "$target"; fi
+  fi
+done

@@ -34,72 +34,24 @@
 #include "translate-preferences.h"
 #include "m-utils.h"
 
-static inline gchar *
-get_selected_message_body_html (EShellView *shell_view)
-{
-    return translate_get_selected_message_body_html_from_shell_view (shell_view);
-}
-
-static void
-on_translate_finished (GObject      *source_object,
-                       GAsyncResult *res,
-                       gpointer      user_data)
-{
-    TranslateProvider *provider = (TranslateProvider*)source_object;
-    EShellView *shell_view = E_SHELL_VIEW (user_data);
-    g_autofree gchar *translated = NULL;
-    g_autoptr(GError) error = NULL;
-
-    if (!translate_provider_translate_finish (provider, res, &translated, &error)) {
-        g_warning ("Translate failed: %s", error ? error->message : "unknown error");
-        return;
-    }
-
-    translate_dom_apply_to_shell_view (shell_view, translated);
-}
-
-/* ============================================================================
- * Shared action logic (called from both old and new UI paths)
- * ============================================================================ */
-
 static void
 do_translate_message (EShellView *shell_view)
 {
-    g_return_if_fail (E_IS_SHELL_VIEW (shell_view));
-
-    /* Always clear stale state first — the update-actions signal may not
-     * have fired yet if the user switched messages and immediately clicked
-     * Translate.  Without this, the toggle below would restore message A's
-     * original into message B's display. */
-    translate_dom_clear_if_message_changed (shell_view);
-
-    /* Toggle behavior: if already translated, restore original */
-    if (translate_dom_is_translated (shell_view)) {
-        translate_dom_restore_original (shell_view);
-        return;
+    EMailReader *reader = translate_ref_reader_from_shell_view (shell_view);
+    if (reader) {
+        translate_common_translate_reader (reader, e_shell_view_get_shell_backend (shell_view));
+        g_object_unref (reader);
     }
-
-    /* Check if we have a cached translation (instant, no network) */
-    if (translate_dom_apply_cached (shell_view))
-        return;
-
-    g_autofree gchar *body_html = get_selected_message_body_html (shell_view);
-    if (!body_html || !*body_html) {
-        g_message ("[translate] No message body available to translate");
-        return;
-    }
-
-    EShellBackend *shell_backend = e_shell_view_get_shell_backend (shell_view);
-    translate_common_translate_async_with_activity (body_html,
-                                                     shell_backend,
-                                                     on_translate_finished,
-                                                     shell_view);
 }
 
 static void
 do_show_original (EShellView *shell_view)
 {
-    translate_dom_restore_original (shell_view);
+    EMailReader *reader = translate_ref_reader_from_shell_view (shell_view);
+    if (reader) {
+        translate_common_restore_reader (reader);
+        g_object_unref (reader);
+    }
 }
 
 static void
@@ -122,6 +74,8 @@ action_translate_message_cb (EUIAction *action,
                              GVariant  *parameter,
                              gpointer   user_data)
 {
+    (void) action;
+    (void) parameter;
     do_translate_message (E_SHELL_VIEW (user_data));
 }
 
@@ -130,6 +84,8 @@ action_show_original_cb (EUIAction *action,
                          GVariant  *parameter,
                          gpointer   user_data)
 {
+    (void) action;
+    (void) parameter;
     do_show_original (E_SHELL_VIEW (user_data));
 }
 
@@ -138,6 +94,8 @@ action_translate_settings_cb (EUIAction *action,
                               GVariant  *parameter,
                               gpointer   user_data)
 {
+    (void) action;
+    (void) parameter;
     do_translate_settings (E_SHELL_VIEW (user_data));
 }
 
@@ -239,6 +197,7 @@ static void
 action_translate_message_cb (GtkAction *action,
                              gpointer   user_data)
 {
+    (void) action;
     do_translate_message (E_SHELL_VIEW (user_data));
 }
 
@@ -246,6 +205,7 @@ static void
 action_show_original_cb (GtkAction *action,
                          gpointer   user_data)
 {
+    (void) action;
     do_show_original (E_SHELL_VIEW (user_data));
 }
 
@@ -253,6 +213,7 @@ static void
 action_translate_settings_cb (GtkAction *action,
                               gpointer   user_data)
 {
+    (void) action;
     do_translate_settings (E_SHELL_VIEW (user_data));
 }
 

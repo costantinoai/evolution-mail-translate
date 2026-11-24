@@ -11,6 +11,7 @@
 
 #include "translate-preferences.h"
 #include "translate-utils.h"
+#include "providers/translate-provider.h"
 
 typedef struct {
     const char *code;
@@ -59,14 +60,20 @@ translate_preferences_show (GtkWindow *parent)
     GtkWidget *lbl_provider = gtk_label_new (_("Provider:"));
     gtk_widget_set_halign (lbl_provider, GTK_ALIGN_START);
     GtkWidget *provider_combo = gtk_combo_box_text_new ();
-    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "argos", "Argos Translate (offline, privacy-focused)");
-    gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), "google", "Google Translate (online, free, recommended)");
+    g_auto(GStrv) provider_ids = translate_provider_list_ids ();
+    for (guint i = 0; provider_ids && provider_ids[i]; i++) {
+        g_autoptr(GObject) provider = translate_provider_new_by_id (provider_ids[i]);
+        gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (provider_combo), provider_ids[i],
+            translate_provider_get_name ((TranslateProvider *) provider));
+    }
     g_autofree gchar *cur_provider = g_settings_get_string (settings, "provider-id");
     gtk_combo_box_set_active_id (GTK_COMBO_BOX (provider_combo), cur_provider && *cur_provider ? cur_provider : "google");
 
-    GtkWidget *lbl_venv = gtk_label_new (_("Argos venv path (optional):"));
+    GtkWidget *lbl_venv = gtk_label_new (_("Python environment (optional):"));
     gtk_widget_set_halign (lbl_venv, GTK_ALIGN_START);
     GtkWidget *venv_entry = gtk_entry_new ();
+    g_autofree gchar *venv_path = g_settings_get_string (provider_settings, "venv-path");
+    gtk_entry_set_text (GTK_ENTRY (venv_entry), venv_path);
 
     GtkWidget *install_on_demand = gtk_check_button_new_with_label (_("Install models on demand"));
     /* Load current install-on-demand setting */
@@ -97,8 +104,8 @@ translate_preferences_show (GtkWindow *parent)
         gboolean install_enabled = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (install_on_demand));
         g_settings_set_boolean (provider_settings, "install-on-demand", install_enabled);
 
-        /* venv_entry not yet implemented */
-        (void)venv_entry;
+        g_settings_set_string (provider_settings, "venv-path",
+                               gtk_entry_get_text (GTK_ENTRY (venv_entry)));
     }
     gtk_widget_destroy (dlg);
 }

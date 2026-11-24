@@ -100,13 +100,13 @@ obj-*/
 obj-x86_64-linux-gnu/
 debian/evolution-translate-extension/
 
-# Local tests folder (kept in repo path but untracked)
-tests/
+# Regression tests are tracked.
 
 # Local development extras (keep untracked)
 requirements-dev.txt
 
 # Internal audit and planning documents (keep private)
+tasks/
 PRODUCTION_READINESS_AUDIT.md
 RELEASE_ACTION_PLAN.md
 TESTING_IMPLEMENTATION_PLAN.md

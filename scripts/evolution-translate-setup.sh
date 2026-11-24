@@ -1,92 +1,68 @@
 #!/usr/bin/env bash
-# evolution-translate-setup: create a user Python environment and install deps/models
+# Create the per-user Python environment and install its declared dependencies.
 set -euo pipefail
 
 APP_DIR="$HOME/.local/lib/evolution-translate"
 VENV_DIR="$APP_DIR/venv"
 REQ_FILE="requirements.txt"
+MODELS_CHOICE=""
+ONLINE_ONLY=false
+for arg in "$@"; do
+  case "$arg" in
+    --models) MODELS_CHOICE=yes ;;
+    --no-models) MODELS_CHOICE=no ;;
+    --online-only) ONLINE_ONLY=true ;;
+    --help|-h)
+      echo "Usage: evolution-translate-setup [--online-only] [--models|--no-models]"
+      echo "--online-only installs online providers without the optional Argos engine."
+      exit 0 ;;
+    *) echo "Unknown option: $arg" >&2; exit 2 ;;
+  esac
+done
+if "$ONLINE_ONLY"; then
+  if [[ "$MODELS_CHOICE" == yes ]]; then
+    echo "--models requires the Argos engine; omit --online-only." >&2
+    exit 2
+  fi
+  REQ_FILE="requirements-online.txt"
+  MODELS_CHOICE=no
+fi
 
-echo "Evolution Translate - User Setup"
-echo "This will create a Python virtualenv under: $VENV_DIR"
-echo "and install Python requirements from the repository requirements.txt."
-echo
-
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "ERROR: python3 is required." >&2
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [[ -f "$ROOT_DIR/$REQ_FILE" ]]; then
+  REQ_PATH="$ROOT_DIR/$REQ_FILE"
+elif [[ -f "$ROOT_DIR/share/evolution-translate/$REQ_FILE" ]]; then
+  REQ_PATH="$ROOT_DIR/share/evolution-translate/$REQ_FILE"
+else
+  echo "Dependency manifest $REQ_FILE is missing. Reinstall the extension." >&2
   exit 1
 fi
 
-mkdir -p "$APP_DIR"
-
-if [ ! -x "$VENV_DIR/bin/python" ]; then
-  echo "Creating virtual environment..."
+command -v python3 >/dev/null
+printf 'Evolution Translate setup\nPython environment: %s\nDependencies: %s\n' "$VENV_DIR" "$REQ_PATH"
+if [[ ! -x "$VENV_DIR/bin/python" ]]; then
   python3 -m venv "$VENV_DIR"
-else
-  echo "Virtual environment already exists at $VENV_DIR"
 fi
+"$VENV_DIR/bin/python" -m pip install --disable-pip-version-check -r "$REQ_PATH"
+"$VENV_DIR/bin/python" -c 'import bs4, langdetect, deep_translator'
 
-"$VENV_DIR/bin/python" -m ensurepip --upgrade >/dev/null 2>&1 || true
-"$VENV_DIR/bin/python" -m pip install --upgrade pip
-
-# Locate requirements.txt relative to script if run from installed prefix
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-if [ -f "$ROOT_DIR/$REQ_FILE" ]; then
-  REQ_PATH="$ROOT_DIR/$REQ_FILE"
-elif [ -f "./$REQ_FILE" ]; then
-  REQ_PATH="./$REQ_FILE"
-else
-  echo "WARNING: requirements.txt not found next to script; using built-in defaults"
-  REQ_PATH=""
+if [[ -z "$MODELS_CHOICE" ]]; then
+  REPLY=""
+  read -r -p "Install default Argos translation models now? [y/N] " REPLY || true
+  if [[ "$REPLY" =~ ^[Yy]$ ]]; then MODELS_CHOICE=yes; else MODELS_CHOICE=no; fi
 fi
-
-echo "Installing Python dependencies..."
-if [ -n "$REQ_PATH" ]; then
-  "$VENV_DIR/bin/python" -m pip install -r "$REQ_PATH"
-else
-  "$VENV_DIR/bin/python" -m pip install argostranslate beautifulsoup4 langdetect
-fi
-
-MODELS_CHOICE=""
-for arg in "$@"; do
-  case "$arg" in
-    --models)
-      MODELS_CHOICE="yes" ;;
-    --no-models)
-      MODELS_CHOICE="no" ;;
-  esac
-done
-
-if [ -z "$MODELS_CHOICE" ]; then
-  echo
-  read -p "Install default translation models now? [y/N] " -n 1 -r || true
-  echo
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    MODELS_CHOICE="yes"
-  else
-    MODELS_CHOICE="no"
+if [[ "$MODELS_CHOICE" == yes ]]; then
+  HELPER=""
+  for candidate in "$ROOT_DIR/tools/translate/install_default_models.py" \
+      "$ROOT_DIR/share/evolution-translate/translate/install_default_models.py" \
+      "$APP_DIR/translate/install_default_models.py"; do
+    if [[ -f "$candidate" ]]; then HELPER="$candidate"; break; fi
+  done
+  if [[ -z "$HELPER" ]]; then
+    echo "Model installer is missing. Reinstall the extension." >&2
+    exit 1
   fi
+  "$VENV_DIR/bin/python" "$HELPER"
 fi
-
-if [ "$MODELS_CHOICE" = "yes" ]; then
-  # Find the helper script installed under /usr/share
-  HELPER="/usr/share/evolution-translate/translate/install_default_models.py"
-  if [ ! -f "$HELPER" ]; then
-    HELPER_LOCAL="$HOME/.local/lib/evolution-translate/translate/install_default_models.py"
-    if [ -f "$HELPER_LOCAL" ]; then
-      HELPER="$HELPER_LOCAL"
-    else
-      echo "Could not find install_default_models.py; skipping model installation"
-      HELPER=""
-    fi
-  fi
-  if [ -n "$HELPER" ]; then
-    "$VENV_DIR/bin/python" "$HELPER" || true
-  fi
-fi
-
-echo
-echo "Done. To use this environment from Evolution, set:"
-echo "  export TRANSLATE_PYTHON_BIN=\"$VENV_DIR/bin/python\""
-echo "Or simply rely on the default search path (this venv is auto-detected)."
-echo
+printf '\nSetup complete. Evolution detects %s automatically.\n' "$VENV_DIR"

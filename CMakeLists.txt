@@ -6,6 +6,9 @@ cmake_policy(VERSION 3.15)
 project(evolution-translate-extension C)
 
 include(GNUInstallDirs)
+set(CMAKE_SKIP_RPATH TRUE)
+set(CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 #
 # Base bits
@@ -20,6 +23,7 @@ if(NOT DEFINED VERSION)
   if(DPKG_PARSECHANGELOG)
     execute_process(
       COMMAND ${DPKG_PARSECHANGELOG} -S Version
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       OUTPUT_VARIABLE DEB_VERSION
       OUTPUT_STRIP_TRAILING_WHITESPACE
       ERROR_QUIET
@@ -48,22 +52,22 @@ set(REQUIRE_EVOLUTION_VERSION 3.52.0)
 
 find_package(PkgConfig REQUIRED)
 
-function(pkg_check_variable _output_name _pkg _name)
-    execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable=${_name} ${_pkg}
-                    OUTPUT_VARIABLE _pkg_result
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-    set("${_output_name}" "${_pkg_result}" CACHE STRING "pkg-config variable ${_name} of ${_pkg}")
-endfunction()
-
 pkg_check_modules(EVOLUTION_SHELL REQUIRED evolution-shell-3.0>=${REQUIRE_EVOLUTION_VERSION})
-pkg_check_modules(EVOLUTION_CALENDAR REQUIRED evolution-calendar-3.0>=${REQUIRE_EVOLUTION_VERSION})
-pkg_check_modules(EVOLUTION_MAIL REQUIRED evolution-mail-3.0>=${REQUIRE_EVOLUTION_VERSION})
-pkg_check_modules(LIBECAL REQUIRED libecal-2.0>=${REQUIRE_EVOLUTION_VERSION})
-pkg_check_modules(LIBEBOOK REQUIRED libebook-1.2>=${REQUIRE_EVOLUTION_VERSION})
-pkg_check_modules(JSON_GLIB REQUIRED json-glib-1.0)
-
-pkg_check_variable(EVOLUTION_MODULE_DIR evolution-shell-3.0 moduledir)
+pkg_check_modules(EVOLUTION REQUIRED IMPORTED_TARGET
+    evolution-mail-3.0>=${REQUIRE_EVOLUTION_VERSION}
+    evolution-shell-3.0>=${REQUIRE_EVOLUTION_VERSION}
+    json-glib-1.0)
+# Evolution's pkg-config files explicitly inject -Wl,-R paths. The host already
+# loads its private libraries; retain other link options without embedding paths.
+get_target_property(EVOLUTION_LINK_OPTIONS PkgConfig::EVOLUTION INTERFACE_LINK_OPTIONS)
+if(EVOLUTION_LINK_OPTIONS)
+  list(FILTER EVOLUTION_LINK_OPTIONS EXCLUDE REGEX "^-Wl,(-R|-rpath|--rpath)(,|=|/|$)")
+  set_property(TARGET PkgConfig::EVOLUTION PROPERTY INTERFACE_LINK_OPTIONS "${EVOLUTION_LINK_OPTIONS}")
+endif()
+pkg_get_variable(EVOLUTION_MODULE_DIR evolution-shell-3.0 moduledir)
+if(NOT IS_ABSOLUTE "${EVOLUTION_MODULE_DIR}")
+  message(FATAL_ERROR "Evolution did not provide an absolute module install directory")
+endif()
 
 # Check if Evolution >= 3.56 (uses new EUIManager API instead of GtkUIManager)
 if(EVOLUTION_SHELL_VERSION VERSION_GREATER_EQUAL "3.56.0")
@@ -120,40 +124,34 @@ install(
 )
 
 # Install setup helper into /usr/bin
+install(FILES requirements.txt requirements-online.txt
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/evolution-translate)
+
 install(
   PROGRAMS ${CMAKE_SOURCE_DIR}/scripts/evolution-translate-setup.sh
   DESTINATION bin
   RENAME evolution-translate-setup
 )
 
-# Install manual page for evolution-translate-setup
-install(
-  FILES ${CMAKE_SOURCE_DIR}/docs/man/evolution-translate-setup.1
-  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
-)
-
-# Ensure the man page is compressed with gzip for Debian policy compliance
-install(CODE [[
-  # gzip the manpage in-place within the DESTDIR tree
-  # Try both /usr/share/man/man1 and /usr/man/man1, depending on CMAKE_INSTALL_MANDIR
-  set(_candidates)
-  list(APPEND _candidates "${CMAKE_INSTALL_PREFIX}/share/man/man1/evolution-translate-setup.1")
-  list(APPEND _candidates "${CMAKE_INSTALL_PREFIX}/man/man1/evolution-translate-setup.1")
-  foreach(_man IN LISTS _candidates)
-    if(DEFINED ENV{DESTDIR})
-      set(_dest "$ENV{DESTDIR}${_man}")
-    else()
-      set(_dest "${_man}")
-    endif()
-    if(EXISTS "${_dest}")
-      execute_process(COMMAND gzip -9n -f "${_dest}" RESULT_VARIABLE _gz_rv)
-      if(NOT _gz_rv EQUAL 0)
-        message(WARNING "Failed to gzip man page: ${_dest}")
-      endif()
-      break()
-    endif()
-  endforeach()
-]])
+# Generate compressed install files before installation so the manifest records
+# their final names and uninstall removes exactly what this project installed.
+find_program(GZIP_EXEC gzip)
+if(NOT GZIP_EXEC)
+  message(FATAL_ERROR "gzip is required to prepare the manual and changelog")
+endif()
+function(compress_install_file source output)
+  execute_process(COMMAND "${GZIP_EXEC}" -9n -c "${source}"
+                  OUTPUT_FILE "${output}" RESULT_VARIABLE result)
+  if(NOT result EQUAL 0)
+    message(FATAL_ERROR "Could not compress ${source}")
+  endif()
+endfunction()
+compress_install_file("${CMAKE_SOURCE_DIR}/docs/man/evolution-translate-setup.1"
+                      "${CMAKE_BINARY_DIR}/evolution-translate-setup.1.gz")
+compress_install_file("${CMAKE_SOURCE_DIR}/debian/changelog"
+                      "${CMAKE_BINARY_DIR}/changelog.Debian.gz")
+install(FILES "${CMAKE_BINARY_DIR}/evolution-translate-setup.1.gz"
+        DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 # CPack configuration for Debian package generation
 set(CPACK_PACKAGE_NAME "evolution-translate-extension")
@@ -184,73 +182,11 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 # Help dpkg-shlibdeps find Evolution private libraries
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS "/usr/lib/x86_64-linux-gnu/evolution;/usr/lib/evolution")
 
-# Install Debian-format changelog and copyright
-install(FILES ${CMAKE_SOURCE_DIR}/debian/changelog
-        DESTINATION share/doc/${CPACK_PACKAGE_NAME}
-        RENAME changelog.Debian)
-install(CODE [[
-  # gzip the changelog.Debian in DESTDIR if present (package doc dir)
-  if(DEFINED ENV{DESTDIR})
-    set(_root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
-  else()
-    set(_root "${CMAKE_INSTALL_PREFIX}")
-  endif()
-  file(GLOB _candidates "${_root}/share/doc/*/changelog.Debian")
-  foreach(_cl IN LISTS _candidates)
-    if(EXISTS "${_cl}")
-      execute_process(COMMAND gzip -9n -f "${_cl}" RESULT_VARIABLE _cl_rv)
-      if(NOT _cl_rv EQUAL 0)
-        message(WARNING "Failed to gzip changelog: ${_cl}")
-      endif()
-    endif()
-  endforeach()
-]])
-install(FILES ${CMAKE_SOURCE_DIR}/debian/copyright
-        DESTINATION share/doc/${CPACK_PACKAGE_NAME})
-
-# Strip binaries during packaging to avoid unstripped-object warnings
-install(CODE [[
-  # Strip the plugin library if strip is available
-  find_program(_STRIP_EXEC strip)
-  if(_STRIP_EXEC)
-    # Look for the installed module in typical locations under the DESTDIR+prefix
-    if(DEFINED ENV{DESTDIR})
-      set(_root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
-    else()
-      set(_root "${CMAKE_INSTALL_PREFIX}")
-    endif()
-    file(GLOB _cand
-      "${_root}/lib/evolution/modules/libtranslate-module.so"
-      "${_root}/lib/*/evolution/modules/libtranslate-module.so"
-      "${_root}/lib64/evolution/modules/libtranslate-module.so"
-    )
-    foreach(_dest IN LISTS _cand)
-      if(EXISTS "${_dest}")
-        execute_process(COMMAND "${_STRIP_EXEC}" --strip-unneeded "${_dest}" RESULT_VARIABLE _strip_rv)
-        if(NOT _strip_rv EQUAL 0)
-          message(WARNING "Failed to strip plugin library: ${_dest}")
-        endif()
-      endif()
-    endforeach()
-  endif()
-]])
-
-# Normalize directory permissions to 0755 (umask-safe) to appease lintian
-install(CODE [[
-  if(DEFINED ENV{DESTDIR})
-    set(_root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
-  else()
-    set(_root "${CMAKE_INSTALL_PREFIX}")
-  endif()
-  execute_process(COMMAND sh -c "chmod -R a+rX,go-w \"${_root}\"")
-]])
+install(FILES "${CMAKE_BINARY_DIR}/changelog.Debian.gz" "${CMAKE_SOURCE_DIR}/debian/copyright"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/${CPACK_PACKAGE_NAME})
+set(CPACK_STRIP_FILES TRUE)
 
 # Package file name
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}_${CMAKE_SYSTEM_PROCESSOR}")
 
 include(CPack)
-# Avoid embedding build/install RPATH/RUNPATH globally (module is dlopen'ed)
-set(CMAKE_SKIP_BUILD_RPATH TRUE)
-set(CMAKE_SKIP_INSTALL_RPATH TRUE)
-set(CMAKE_BUILD_RPATH_USE_ORIGIN FALSE)
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)

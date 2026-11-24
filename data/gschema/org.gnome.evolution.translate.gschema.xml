@@ -18,12 +18,12 @@
     </key>
   </schema>
 
-  <!-- Provider-specific (relocatable) schema example for Argos -->
+  <!-- Shared Python environment and offline model settings -->
   <schema id="org.gnome.evolution.translate.provider" path="/org/gnome/evolution/translate/providers/">
     <key name="venv-path" type="s">
       <default>''</default>
       <summary>Python virtualenv path</summary>
-      <description>Path to the Python virtual environment used for Argos Translate. If empty, use repository-local .venv or system.</description>
+      <description>Path to the Python virtual environment used by translation providers. If empty, use ~/.local/lib/evolution-translate/venv.</description>
     </key>
     <key name="install-on-demand" type="b">
       <default>true</default>

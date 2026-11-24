@@ -8,7 +8,11 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
   build-and-release:
+    needs: validate
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -17,10 +21,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check release version
+        run: |
+          VERSION=$(dpkg-parsechangelog -S Version)
+          test "${GITHUB_REF_NAME}" = "v${VERSION%-*}"
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config glib2.0-dev libjson-glib-dev \
+          sudo apt-get install -y build-essential cmake pkg-config libglib2.0-dev libjson-glib-dev \
             evolution evolution-dev evolution-data-server-dev libebook1.2-dev \
             debhelper devscripts lintian xz-utils chrpath
 
@@ -42,10 +51,13 @@ jobs:
           set -e
           DEB=$(ls -t ../*.deb | head -n1)
           echo "deb=$DEB" >> $GITHUB_OUTPUT
+          echo "deb_name=$(basename "$DEB")" >> $GITHUB_OUTPUT
+          TAR="${{ steps.dist.outputs.tar }}"
+          echo "tar_name=$(basename "$TAR")" >> $GITHUB_OUTPUT
 
           # Generate SHA256 checksums
-          sha256sum "$DEB" | tee "${DEB}.sha256"
-          sha256sum "${{ steps.dist.outputs.tar }}" | tee "${{ steps.dist.outputs.tar }}.sha256"
+          (cd "$(dirname "$DEB")"; sha256sum "$(basename "$DEB")") > "${DEB}.sha256"
+          (cd "$(dirname "$TAR")"; sha256sum "$(basename "$TAR")") > "${TAR}.sha256"
           echo "deb_sha=${DEB}.sha256" >> $GITHUB_OUTPUT
           echo "tar_sha=${{ steps.dist.outputs.tar }}.sha256" >> $GITHUB_OUTPUT
 
@@ -77,15 +89,15 @@ jobs:
 
             **Ubuntu 24.04:**
             ```bash
-            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$(basename ${{ steps.gather.outputs.deb }})
-            sudo apt install ./$(basename ${{ steps.gather.outputs.deb }})
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ steps.gather.outputs.deb_name }}
+            sudo apt install ./${{ steps.gather.outputs.deb_name }}
             evolution-translate-setup
             ```
 
             **From source:**
             ```bash
-            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$(basename ${{ steps.dist.outputs.tar }})
-            tar -xf $(basename ${{ steps.dist.outputs.tar }})
+            wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ steps.gather.outputs.tar_name }}
+            tar -xf ${{ steps.gather.outputs.tar_name }}
             cd evolution-translate-extension-*/
             cmake -S . -B build
             cmake --build build

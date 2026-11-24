@@ -2,74 +2,39 @@ name: CI
 
 on:
   push:
-    branches:
-      - '**'
-    tags-ignore:
-      - '**'
+    branches: ['**']
+    tags-ignore: ['**']
   pull_request:
+  workflow_call:
 
 jobs:
-  # Quick validation stage - fails fast on critical issues only
-  # Linting is informational - handle formatting locally before push
-  quick-check:
+  validate:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-
-      - name: Bash syntax check
-        run: bash -n scripts/*.sh
-
-      - name: Basic compilation check
+      - name: Install build and private GUI test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake pkg-config glib2.0-dev libjson-glib-dev \
-            evolution evolution-dev evolution-data-server-dev libebook1.2-dev
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="-Wall -Wextra"
-          cmake --build build -j
-
-      - name: Python lint (informational only)
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install flake8 black || true
-          python3 -m black --check tools/translate || echo "⚠️  Black formatting needed - run locally"
-          python3 -m flake8 tools/translate || echo "⚠️  Flake8 issues found - run locally"
-
-  # Full build and validation - only runs if quick-check passes
-  build-and-test:
-    needs: quick-check
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config glib2.0-dev libjson-glib-dev \
+          sudo apt-get install -y build-essential cmake pkg-config libglib2.0-dev libjson-glib-dev \
             evolution evolution-dev evolution-data-server-dev libebook1.2-dev \
-            debhelper devscripts lintian cppcheck chrpath
-
-      - name: Setup Python for testing
+            python3-venv xvfb dbus-x11 debhelper devscripts lintian chrpath
+          sudo install -d -m 700 -o "$(id -u)" -g "$(id -g)" "/run/user/$(id -u)"
+      - name: Create test environment
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install pytest
-          if [ -f requirements.txt ]; then python3 -m pip install -r requirements.txt; fi
-
+          python3 -m venv .venv
+          .venv/bin/python -m pip install pytest ruff -r requirements-online.txt
+      - name: Check every shell script and Python source
+        run: |
+          for script in scripts/*.sh; do bash -n "$script"; done
+          .venv/bin/ruff check tools/translate tests
       - name: Configure and build
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DCMAKE_C_FLAGS="-Wall -Wextra"
-          cmake --build build -j
-
-      - name: C static analysis (informational only)
-        run: |
-          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 \
-            --inline-suppr --force --quiet src || echo "⚠️  Cppcheck issues found - review locally"
-
-      - name: Python unit tests (informational only)
-        run: python3 -m pytest -v || echo "⚠️  No tests found - tests/ is private (gitignored)"
-
-      - name: Build Debian package
-        run: dpkg-buildpackage -us -uc -b
-
-      - name: Lintian package validation (informational only)
-        run: lintian --display-info --fail-on error ../*.deb || echo "⚠️  Lintian policy issues found - review locally"
+            -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_C_FLAGS="-Wall -Wextra -Werror"
+          cmake --build build -j2
+      - name: Run regressions
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: .venv/bin/python -m pytest -q -p no:cacheprovider tests
+      - name: Build isolated Debian package and enforce package checks
+        run: ./scripts/build-deb.sh

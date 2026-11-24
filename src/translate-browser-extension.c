@@ -32,60 +32,19 @@
 G_DEFINE_DYNAMIC_TYPE(TranslateBrowserExtension, translate_browser_extension, E_TYPE_EXTENSION)
 
 static void
-on_translate_finished_browser (GObject *source_object,
-                               GAsyncResult *res,
-                               gpointer user_data)
-{
-    TranslateProvider *provider = (TranslateProvider*)source_object;
-    EMailReader *reader = E_MAIL_READER (user_data);
-    g_autofree gchar *translated = NULL;
-    g_autoptr(GError) error = NULL;
-    if (!translate_provider_translate_finish (provider, res, &translated, &error)) {
-        g_warning ("Translate failed: %s", error ? error->message : "unknown error");
-        return;
-    }
-    translate_dom_apply_to_reader (reader, translated);
-}
-
-/* ============================================================================
- * Shared action logic (called from both old and new UI paths)
- * ============================================================================ */
-
-static void
 do_translate_browser (TranslateBrowserExtension *self)
 {
     EMailReader *reader = E_MAIL_READER (e_extension_get_extensible (E_EXTENSION (self)));
-
-    /* Always clear stale state first — see do_translate_message() comment */
-    translate_dom_clear_if_message_changed_reader (reader);
-
-    if (translate_dom_is_translated_reader (reader)) {
-        translate_dom_restore_original_reader (reader);
-        return;
-    }
-
-    /* Check if we have a cached translation (instant, no network) */
-    if (translate_dom_apply_cached_reader (reader))
-        return;
-
-    g_autofree gchar *body_html = translate_get_selected_message_body_html_from_reader (reader);
-    if (!body_html || !*body_html)
-        return;
-
     EShell *shell = e_shell_get_default ();
-    EShellBackend *shell_backend = e_shell_get_backend_by_name (shell, "mail");
-
-    translate_common_translate_async_with_activity (body_html,
-                                                     shell_backend,
-                                                     on_translate_finished_browser,
-                                                     reader);
+    EShellBackend *backend = shell ? e_shell_get_backend_by_name (shell, "mail") : NULL;
+    translate_common_translate_reader (reader, backend);
 }
 
 static void
 do_show_original_browser (TranslateBrowserExtension *self)
 {
     EMailReader *reader = E_MAIL_READER (e_extension_get_extensible (E_EXTENSION (self)));
-    translate_dom_restore_original_reader (reader);
+    translate_common_restore_reader (reader);
 }
 
 static void
@@ -107,6 +66,8 @@ action_translate_message_cb (EUIAction *action,
                              GVariant  *parameter,
                              gpointer   user_data)
 {
+    (void) action;
+    (void) parameter;
     do_translate_browser (TRANSLATE_BROWSER_EXTENSION (user_data));
 }
 
@@ -115,6 +76,8 @@ action_show_original_cb (EUIAction *action,
                          GVariant  *parameter,
                          gpointer   user_data)
 {
+    (void) action;
+    (void) parameter;
     do_show_original_browser (TRANSLATE_BROWSER_EXTENSION (user_data));
 }
 
@@ -123,6 +86,8 @@ action_translate_settings_cb (EUIAction *action,
                               GVariant  *parameter,
                               gpointer   user_data)
 {
+    (void) action;
+    (void) parameter;
     do_translate_settings_browser (TRANSLATE_BROWSER_EXTENSION (user_data));
 }
 
@@ -214,6 +179,7 @@ static void
 action_translate_message_cb (GtkAction *action,
                              gpointer   user_data)
 {
+    (void) action;
     do_translate_browser (TRANSLATE_BROWSER_EXTENSION (user_data));
 }
 
@@ -221,6 +187,7 @@ static void
 action_show_original_cb (GtkAction *action,
                          gpointer   user_data)
 {
+    (void) action;
     do_show_original_browser (TRANSLATE_BROWSER_EXTENSION (user_data));
 }
 
@@ -228,13 +195,13 @@ static const GtkActionEntry browser_entries[] = {
     { "translate-message-action",
       GTK_STOCK_ADD,
       N_("_Translate"),
-      NULL,
+      "<Control><Shift>T",
       N_("Translate the selected message"),
       G_CALLBACK (action_translate_message_cb) },
     { "translate-show-original-action",
       GTK_STOCK_REFRESH,
       N_("Show _Original"),
-      NULL,
+      "<Control><Shift>O",
       N_("Show the original content"),
       G_CALLBACK (action_show_original_cb) }
 };
@@ -243,6 +210,7 @@ static void
 action_translate_settings_cb (GtkAction *action,
                               gpointer   user_data)
 {
+    (void) action;
     do_translate_settings_browser (TRANSLATE_BROWSER_EXTENSION (user_data));
 }
 

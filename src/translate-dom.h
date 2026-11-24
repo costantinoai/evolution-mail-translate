@@ -8,11 +8,11 @@
 
 G_BEGIN_DECLS
 
-/* Apply translated HTML into the current preview pane. Placeholder implementation. */
+/* Apply translated HTML into the current preview pane.  */
 void translate_dom_apply_to_shell_view (EShellView *shell_view,
                                         const gchar *translated_html);
 
-/* Toggle back to original content (placeholder). */
+/* Toggle back to original content . */
 void translate_dom_restore_original (EShellView *shell_view);
 
 /* Returns TRUE if the current preview is showing a translated version. */

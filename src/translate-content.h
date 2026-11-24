@@ -12,6 +12,9 @@ G_BEGIN_DECLS
 /* Returns newly allocated HTML for the selected message body in a reader. */
 gchar * translate_get_selected_message_body_html_from_reader (EMailReader *reader);
 
+/* Returns an owned reader reference for the shell mail view. */
+EMailReader *translate_ref_reader_from_shell_view (EShellView *shell_view);
+
 /* Convenience wrapper to fetch from shell view's current mail view reader. */
 gchar * translate_get_selected_message_body_html_from_shell_view (EShellView *shell_view);
 

@@ -50,11 +50,13 @@ translate_shell_view_extension_class_init (TranslateShellViewExtensionClass *kla
 static void
 translate_shell_view_extension_class_finalize (TranslateShellViewExtensionClass *klass)
 {
+    (void) klass;
 }
 
 static void
 translate_shell_view_extension_init (TranslateShellViewExtension *self)
 {
+    (void) self;
 }
 
 void

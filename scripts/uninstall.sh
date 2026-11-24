@@ -29,10 +29,11 @@ echo ""
 if [ -f "$BUILD_DIR/install_manifest.txt" ]; then
     echo "Using CMake uninstall (requires sudo)..."
     cd "$BUILD_DIR"
-    if sudo make uninstall 2>/dev/null; then
+    if sudo cmake --build "$BUILD_DIR" --target uninstall; then
         print_status "Extension uninstalled via CMake"
     else
-        print_warning "CMake uninstall failed, proceeding with manual removal"
+        print_error "CMake uninstall failed. Resolve that error before removing files manually."
+        exit 1
     fi
 else
     print_warning "No install manifest found at $BUILD_DIR/install_manifest.txt"
@@ -61,7 +62,7 @@ if [ -f "$SCHEMA_FILE" ]; then
     # Recompile system schemas
     echo "Recompiling system GSettings schemas..."
     # Use umask 0022 to ensure schemas are world-readable (644)
-    sudo sh -c 'umask 0022 && glib-compile-schemas /usr/share/glib-2.0/schemas' 2>/dev/null || true
+    sudo sh -c 'umask 0022 && glib-compile-schemas /usr/share/glib-2.0/schemas'
     print_status "Schemas recompiled"
 fi
 
